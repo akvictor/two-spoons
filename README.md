@@ -7,18 +7,24 @@ Inspired by the parts of LoseIt! and Cal AI that actually get used day to day.
 
 ## What it does
 
-- **Two profiles side by side.** Each person gets a calorie budget derived from sex, age,
-  height, weight, activity level and goal (Mifflin-St Jeor), recalculated automatically
-  as logged weight changes.
+- **Two profiles side by side**, each with a name you can change at any time and an
+  optional photo. Calorie budgets come from sex, age, height, weight, activity level and
+  goal (Mifflin-St Jeor), recalculated automatically as logged weight changes.
 - **Daily log** with a calorie ring, remaining count, protein/carb/fat bars, meals split
   into breakfast / lunch / dinner / snacks, streaks, copy-yesterday, and day-by-day history.
-- **Plain-language logging.** Type `kaya toast + 2 soft boiled eggs and kopi c` and it
-  parses the quantities and matches each item — no photo API, no per-scan cost.
+- **Exercise earns calories back.** Pick an activity and minutes; the burn is estimated
+  from your weight and the activity's intensity (METs) and added to that day's budget.
+- **Water tracking** against a per-person daily glass target.
+- **Four ways to log food** — search, plain language (`kaya toast + 2 soft boiled eggs and
+  kopi c` parses quantities and matches each item), quick-add when you just know the
+  number, and custom foods you define once and reuse.
+- **Saved meals.** Bundle a meal you eat often into one entry and re-add it in a tap.
 - **~115-item food database** weighted toward Singapore hawker food (chicken rice, char
-  kway teow, laksa, cai fan, the full kopi/teh matrix) plus everyday staples, with search,
-  recents, a portion stepper, and custom foods.
+  kway teow, laksa, cai fan, the full kopi/teh matrix) plus everyday staples, and a
+  28-activity exercise database.
+- **Insights** — 7-day averages, days on target, and a projected weekly weight change with
+  an estimated date for reaching your goal weight.
 - **Shared view** — both people's numbers, streaks, weekly chart and weight trends together.
-- **Trends** — 14-day intake against your budget line, plus weight logging and trend chart.
 
 ## Storage
 
@@ -34,13 +40,15 @@ and reports which one is live in Settings:
 ## Using it on two phones
 
 Each device keeps its own copy. To combine them, one person exports from Settings and the
-other imports — entries merge by id, so importing twice never duplicates or loses anything.
+other imports — food, exercise, water and weights merge by id, so importing twice never
+duplicates or loses anything.
 
 ## Accuracy
 
 Calorie and macro values are typical-portion estimates meant for spotting trends, not
-laboratory figures. Budgets use Mifflin-St Jeor with a standard activity multiplier.
-This is not medical advice.
+laboratory figures. Budgets use Mifflin-St Jeor with a standard activity multiplier, and
+exercise burn uses MET values scaled by body weight. If you log workouts, pick a lower
+activity level so the same effort is not counted twice. This is not medical advice.
 
 ## License
 
