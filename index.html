@@ -148,6 +148,12 @@ h1,h3{font-weight:800}
 .stepper{display:flex;align-items:center;border:2.5px solid var(--line);border-radius:16px;overflow:hidden}
 .stepper button{width:44px;height:44px;font-size:20px;background:var(--card)}
 .stepper .val{min-width:70px;text-align:center;font-weight:700}
+.ministep{display:flex;align-items:center;border:2px solid var(--line);border-radius:12px;overflow:hidden;flex:none}
+.ministep button{width:30px;height:32px;font-size:17px;font-weight:800;background:var(--card)}
+.ministep .val{min-width:36px;text-align:center;font-weight:800;font-size:13px}
+.phrow .fname{font-size:15px;line-height:1.25}
+.phrow .fsub{font-size:11.5px;line-height:1.3}
+.phrow .kc{min-width:44px;text-align:right;font-weight:800}
 .qtyrow{display:flex;gap:10px;align-items:center;margin:12px 0}
 /* charts */
 .chart{width:100%;overflow-x:auto}
@@ -180,6 +186,9 @@ table.data td,table.data th{padding:4px 6px;border-bottom:1px solid var(--line2)
 table.data,.num,.fname,.fsub{-webkit-user-select:text;user-select:text}
 .tipbar{background:var(--p1-soft);border:1px solid var(--p1);border-radius:12px;padding:10px 12px;font-size:13px;margin:10px 0 0}
 table.data th:first-child,table.data td:first-child{text-align:left}
+@keyframes spin{0%,100%{transform:scale(1) rotate(-6deg)}50%{transform:scale(1.15) rotate(6deg)}}
+.spin{animation:spin 1.1s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}}
 @media (prefers-reduced-motion:no-preference){
   .ringprog{transition:stroke-dashoffset .6s cubic-bezier(.34,1.56,.64,1)}
   .card{animation:pop .26s cubic-bezier(.34,1.56,.64,1) both}
@@ -743,6 +752,9 @@ function closeSheet(){const s=$("#scrim");if(s)s.remove();document.removeEventLi
 function addSheetHTML(){
   return '<h3>Add to <select id="mealSel" style="width:auto;display:inline-block;padding:4px 8px;font-weight:700">'+
     MEALS.map(m=>'<option '+(m===sheetMeal?"selected":"")+'>'+m+'</option>').join("")+'</select></h3>'+
+    '<button class="btn primary" style="width:100%;margin-bottom:12px;padding:13px" data-photo="pick">📷 Analyse a photo</button>'+
+    '<input type="file" id="phCam" accept="image/*" capture="environment" style="display:none">'+
+    '<input type="file" id="phLib" accept="image/*" style="display:none">'+
     '<div class="seg">'+
       '<button data-st="search" class="'+(sheetTab==="search"?"on":"")+'">Search</button>'+
       '<button data-st="quick" class="'+(sheetTab==="quick"?"on":"")+'">Describe</button>'+
@@ -831,6 +843,116 @@ function pickHTML(){
   return '<div class="card" style="margin:4px 0 0"><b>'+esc(f.name)+'</b><div class="tiny muted num">'+esc(f.serving)+' · '+f.kcal+' kcal · P'+f.p+' C'+f.c+' F'+f.f+'</div>'+
     '<div class="qtyrow"><span class="tiny muted">Portion</span><div class="stepper"><button id="qMinus">−</button><span class="val num" id="qVal">'+pickedQty+'×</span><button id="qPlus">+</button></div><span class="grow"></span><b class="num" id="qKcal">'+r0(f.kcal*pickedQty)+' kcal</b></div>'+
     '<div class="row"><button class="btn" id="pickBack">Back</button><button class="btn primary grow" id="pickAdd">Add to '+sheetMeal+'</button></div></div>';
+}
+/* --- photo flow --- */
+let photoState=null;   // {phase:"choose"|"working"|"done"|"error", ...}
+function photoSheetHTML(){
+  const st=photoState||{};
+  if(st.phase==="working"){
+    return '<h3>Reading your photo…</h3>'+
+      '<div class="card" style="text-align:center;padding:26px 16px">'+
+        '<div style="font-size:34px" class="spin">🍽️</div>'+
+        '<p class="tiny muted" style="margin:12px 0 0">Working out what\u2019s on the plate and roughly how much. Usually a few seconds.</p>'+
+      '</div>';
+  }
+  if(st.phase==="error"){
+    const m={
+      nokey:["No key yet","Photo analysis needs your own Anthropic API key. Add it in Settings — it stays on this phone."],
+      badkey:["That key was rejected","Check it in Settings — it should start with sk-ant-."],
+      ratelimit:["Rate limited","Too many requests just now. Wait a moment and try again."],
+      billing:["Billing problem","Your Anthropic account needs payment details or has hit its cap."],
+      overloaded:["Service busy","Anthropic\u2019s servers are overloaded. Try again shortly."],
+      network:["Couldn\u2019t reach the service","Check your connection and try again."],
+      refusal:["Couldn\u2019t analyse that one","Try a clearer photo of the food."],
+      badreply:["Unexpected reply","Something came back that couldn\u2019t be read. Try again."],
+      image:["Photo problem",st.msg||"Try a different photo."],
+      api:["Something went wrong",st.msg||"Try again."]
+    }[st.error]||["Something went wrong",st.msg||"Try again."];
+    return '<h3>'+esc(m[0])+'</h3><p class="tiny muted" style="margin-top:-6px">'+esc(m[1])+'</p>'+
+      '<div class="row" style="margin-top:14px">'+
+        (st.error==="nokey"||st.error==="badkey"
+          ? '<button class="btn primary grow" data-photo="settings">Open Settings</button>'
+          : '<button class="btn primary grow" data-photo="pick">Try another photo</button>')+
+      '</div>';
+  }
+  if(st.phase==="done"){
+    if(!st.items.length){
+      return '<h3>No food spotted</h3>'+
+        '<p class="tiny muted" style="margin-top:-6px">'+esc(st.note||"That photo didn\u2019t look like food.")+'</p>'+
+        '<button class="btn primary" style="width:100%;margin-top:14px" data-photo="pick">Try another photo</button>';
+    }
+    let h='<h3>Found '+st.items.length+(st.items.length===1?" item":" items")+'</h3>'+
+      '<p class="tiny muted" style="margin-top:-6px">Estimates from the picture. Adjust the portions, then add. A <b>?</b> marks a rough guess.</p>';
+    let total=0;
+    st.items.forEach((it,i)=>{
+      total+=it.kcal*it.qty;
+      const dim=it.conf==="low"?' style="opacity:.65"':"";
+      h+='<div class="foodrow phrow"><span class="fic">'+(it.ic||"🍽️")+'</span>'+
+        '<span class="grow"><span class="fname">'+esc(it.name)+(it.conf==="low"?' <span class="tiny muted">?</span>':"")+'</span><br>'+
+        '<span class="fsub num"'+dim+'>'+esc(it.serving)+' · P'+it.p+' C'+it.c+' F'+it.f+'</span></span>'+
+        '<div class="ministep">'+
+          '<button data-phq="'+i+'|-1">−</button><span class="val num">'+it.qty+'×</span>'+
+          '<button data-phq="'+i+'|1">+</button></div>'+
+        '<b class="num kc">'+r0(it.kcal*it.qty)+'</b></div>';
+    });
+    if(st.note)h+='<p class="tiny muted" style="margin:10px 0 0">'+esc(st.note)+'</p>';
+    h+='<div class="row" style="margin-top:14px;justify-content:space-between">'+
+       '<b class="num">Total ≈ '+r0(total)+' kcal</b>'+
+       '<button class="btn primary" data-photo="add">Add to '+esc(sheetMeal)+'</button></div>'+
+       '<button class="btn" style="width:100%;margin-top:10px" data-photo="pick">Use a different photo</button>';
+    return h;
+  }
+  return '<h3>Analyse a photo</h3>'+
+    '<p class="tiny muted" style="margin-top:-6px">A photo of your meal is read by Claude to estimate what\u2019s in it. Roughly 2\u00a2 a photo, billed to your own Anthropic key.</p>'+
+    '<div class="row" style="margin-top:14px">'+
+      '<button class="btn primary grow" data-photo="cam">📷 Take photo</button>'+
+      '<button class="btn grow" data-photo="lib">🖼️ Choose</button></div>'+
+    (S.aiKey?"":'<p class="tiny" style="color:var(--over);margin:12px 0 0">You\u2019ll need to add your Anthropic API key in Settings first.</p>');
+}
+function openPhoto(meal){
+  sheetMeal=meal||sheetMeal||guessMeal();
+  photoState={phase:"choose"};
+  openSheet(photoSheetHTML()+
+    '<input type="file" id="phCam" accept="image/*" capture="environment" style="display:none">'+
+    '<input type="file" id="phLib" accept="image/*" style="display:none">');
+  bindPhoto();
+}
+function refreshPhoto(){
+  const s=$("#scrim"); if(!s)return;
+  s.querySelector(".sheet").innerHTML=sheetChrome()+photoSheetHTML()+
+    '<input type="file" id="phCam" accept="image/*" capture="environment" style="display:none">'+
+    '<input type="file" id="phLib" accept="image/*" style="display:none">';
+  bindPhoto();
+}
+async function runPhoto(file){
+  if(!file)return;
+  photoState={phase:"working"};refreshPhoto();
+  const res=await analysePhoto(file);
+  if(res.error){photoState={phase:"error",error:res.error,msg:res.msg};}
+  else{photoState={phase:"done",items:res.items.map(it=>Object.assign({},it,{qty:1})),note:res.note};}
+  refreshPhoto();
+}
+function bindPhoto(){
+  const cam=$("#phCam"), lib=$("#phLib");
+  if(cam)cam.onchange=e=>runPhoto(e.target.files[0]);
+  if(lib)lib.onchange=e=>runPhoto(e.target.files[0]);
+  document.querySelectorAll("[data-photo]").forEach(b=>b.onclick=()=>{
+    const a=b.dataset.photo;
+    if(a==="cam"&&cam)cam.click();
+    else if(a==="lib"&&lib)lib.click();
+    else if(a==="pick"){photoState={phase:"choose"};refreshPhoto();}
+    else if(a==="settings"){closeSheet();S.tab="settings";render();}
+    else if(a==="add"){
+      for(const it of photoState.items)addEntry(it,it.qty,sheetMeal);
+      closeSheet();render();
+    }
+  });
+  document.querySelectorAll("[data-phq]").forEach(b=>b.onclick=()=>{
+    const [i,d]=b.dataset.phq.split("|").map(Number);
+    const it=photoState.items[i];
+    it.qty=Math.max(0.25,+(it.qty+d*0.25).toFixed(2));
+    refreshPhoto();
+  });
 }
 /* quick log parser */
 function parseQuick(text){
@@ -1180,6 +1302,119 @@ function usHTML(){
         '<p class="tiny muted" style="text-align:center;margin:10px 0 4px">Swap codes now and then to keep both phones up to date.</p>';
   return html;
 }
+/* ================= photo analysis =================
+   Calls the Claude API straight from the phone with the user's own key.
+   The key is kept in this device's storage only: never in the repo, never in a
+   backup or invite (see exportableState). Browsers need the explicit
+   direct-access header or the request is blocked by CORS. */
+const AI_MODEL="claude-opus-5";
+const AI_SCHEMA={
+  type:"object",
+  properties:{
+    items:{type:"array",items:{
+      type:"object",
+      properties:{
+        name:{type:"string"},
+        serving:{type:"string"},
+        kcal:{type:"integer"},
+        protein_g:{type:"integer"},
+        carbs_g:{type:"integer"},
+        fat_g:{type:"integer"},
+        icon:{type:"string"},
+        confidence:{type:"string",enum:["high","medium","low"]}
+      },
+      required:["name","serving","kcal","protein_g","carbs_g","fat_g","icon","confidence"],
+      additionalProperties:false
+    }},
+    note:{type:"string"}
+  },
+  required:["items","note"],
+  additionalProperties:false
+};
+const AI_PROMPT=
+ "Identify every distinct food and drink in this photo and estimate its calories.\n\n"+
+ "- Judge the portion from what is actually visible, using the plate, bowl, cutlery or hand for scale.\n"+
+ "- Singapore hawker and Southeast Asian dishes are common here; name them as a local would (chicken rice, char kway teow, kopi C).\n"+
+ "- serving: a short human portion, e.g. \"1 plate\", \"2 pieces\", \"1 bowl\".\n"+
+ "- kcal and the macros are for the portion shown, not per 100g. Whole numbers.\n"+
+ "- icon: a single food emoji that best matches the item.\n"+
+ "- confidence: high if the dish and portion are clear, low if you are largely guessing.\n"+
+ "- Combine what would be eaten as one item; list separate dishes and drinks separately.\n"+
+ "- If there is no food or drink in the picture, return an empty items list and say so in note.\n"+
+ "- note: one short sentence on anything that affects the estimate (hidden portions, unclear sauce, guessed size). Keep it brief.";
+
+/* Downscale before upload: smaller image, fewer visual tokens, cheaper call. */
+function photoToBase64(file,maxEdge){
+  return new Promise((res,rej)=>{
+    const fr=new FileReader();
+    fr.onerror=()=>rej(new Error("Couldn't read that photo."));
+    fr.onload=()=>{
+      const img=new Image();
+      img.onerror=()=>rej(new Error("That file isn't an image."));
+      img.onload=()=>{
+        let w=img.width,h=img.height;
+        const scale=Math.min(1,maxEdge/Math.max(w,h));
+        w=Math.max(1,Math.round(w*scale)); h=Math.max(1,Math.round(h*scale));
+        const cv=document.createElement("canvas");cv.width=w;cv.height=h;
+        cv.getContext("2d").drawImage(img,0,0,w,h);
+        try{
+          const url=cv.toDataURL("image/jpeg",0.85);
+          res({b64:url.slice(url.indexOf(",")+1),w:w,h:h});
+        }catch(e){rej(new Error("Couldn't process that photo."));}
+      };
+      img.src=fr.result;
+    };
+    fr.readAsDataURL(file);
+  });
+}
+async function analysePhoto(file){
+  if(!S.aiKey)return {error:"nokey"};
+  let img;
+  try{img=await photoToBase64(file,1000);}catch(e){return {error:"image",msg:e.message};}
+  let res;
+  try{
+    res=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{
+        "content-type":"application/json",
+        "x-api-key":S.aiKey,
+        "anthropic-version":"2023-06-01",
+        "anthropic-dangerous-direct-browser-access":"true"
+      },
+      body:JSON.stringify({
+        model:AI_MODEL,
+        max_tokens:2048,
+        output_config:{effort:"low",format:{type:"json_schema",schema:AI_SCHEMA}},
+        messages:[{role:"user",content:[
+          {type:"image",source:{type:"base64",media_type:"image/jpeg",data:img.b64}},
+          {type:"text",text:AI_PROMPT}
+        ]}]
+      })
+    });
+  }catch(e){return {error:"network"};}
+  let data;
+  try{data=await res.json();}catch(e){return {error:"badreply"};}
+  if(!res.ok){
+    const t=(data&&data.error&&data.error.type)||"";
+    if(res.status===401)return {error:"badkey"};
+    if(res.status===429)return {error:"ratelimit"};
+    if(res.status===402)return {error:"billing"};
+    if(res.status>=500)return {error:"overloaded"};
+    return {error:"api",msg:(data&&data.error&&data.error.message)||t||("HTTP "+res.status)};
+  }
+  if(data.stop_reason==="refusal")return {error:"refusal"};
+  const block=(data.content||[]).find(b=>b.type==="text");
+  if(!block)return {error:"badreply"};
+  let parsed;
+  try{parsed=JSON.parse(block.text);}catch(e){return {error:"badreply"};}
+  const items=(parsed.items||[]).filter(it=>it&&it.name&&it.kcal>0).map(it=>({
+    name:String(it.name).slice(0,60),
+    serving:String(it.serving||"1 serving").slice(0,40),
+    kcal:r0(it.kcal), p:r0(it.protein_g||0), c:r0(it.carbs_g||0), f:r0(it.fat_g||0),
+    ic:(it.icon||"🍽️"), conf:it.confidence||"medium", kw:""
+  }));
+  return {ok:true,items:items,note:parsed.note||"",usage:data.usage||null};
+}
 /* ================= the journey ================= */
 function partnerOf(pid){return pid==="a"?"b":"a";}
 function meProf(){return S.profiles[S.me];}
@@ -1254,6 +1489,16 @@ function settingsHTML(){
     }
     html+='</section>';
   }
+  html+='<section class="card"><div class="label" style="margin-bottom:8px">Photo analysis</div>'+
+   '<div class="row" style="justify-content:space-between"><span class="tiny">Reading meals from photos</span>'+
+   '<span class="pill '+(S.aiKey?"good":"")+'">'+(S.aiKey?"On":"Off")+'</span></div>'+
+   (S.aiKey
+     ? '<p class="tiny muted" style="margin:10px 0 10px">Your key is stored on this phone only — never in a backup, an invite, or the code.</p>'+
+       '<div class="row"><button class="btn small grow" data-act="aikey">Replace key</button>'+
+       '<button class="btn small danger grow" data-act="aiclear">Remove key</button></div>'
+     : '<p class="tiny muted" style="margin:10px 0 10px">Add your own Anthropic API key to photograph a meal and have it read for you. Roughly 2\u00a2 a photo, billed to your account. The key stays on this phone.</p>'+
+       '<button class="btn small primary" data-act="aikey">Add API key</button>')+
+   '</section>';
   html+='<section class="card"><div class="label" style="margin-bottom:8px">Saving</div>'+
    '<div class="row" style="justify-content:space-between"><span class="tiny">Kept in <b>'+Store.where()+'</b></span>'+
    '<span class="pill '+(Store.saving()?"good":"over")+'">'+(Store.saving()?"Saving on":"Not saving")+'</span></div>'+
@@ -1285,6 +1530,23 @@ function settingsHTML(){
    '<p class="tiny muted" style="margin:0">Food and exercise values are typical estimates — treat them as a guide, not gospel. Budgets use the Mifflin-St Jeor formula; exercise is estimated from your weight and activity intensity. If you log workouts here, pick a lower activity level so the same effort is not counted twice. Not medical advice.</p>'+
    '<button class="btn danger small" style="margin-top:12px" data-act="reset">Erase all data</button></section>';
   return html;
+}
+function aiKeySheet(){
+  openSheet('<h3>Anthropic API key</h3>'+
+    '<p class="tiny muted" style="margin-top:-6px">Create one at <b>console.anthropic.com</b> → API keys, then paste it below. It is saved on this phone only — not in your backups, not in an invite to your partner, and not in the app\u2019s code.</p>'+
+    '<div class="frow" style="margin-top:12px"><div><div class="flabel">Key</div>'+
+      '<input id="aiK" type="password" autocomplete="off" placeholder="sk-ant-..." value="'+esc(S.aiKey||"")+'"></div></div>'+
+    '<div id="aiWarn"></div>'+
+    '<p class="tiny muted">Anyone who can unlock this phone could read it, so set a spend limit on the key in the console. Photos are sent to Anthropic to be read and are not kept afterwards.</p>'+
+    '<div class="row" style="margin-top:12px"><button class="btn grow" id="aiCancel">Cancel</button>'+
+    '<button class="btn primary grow" id="aiSave">Save</button></div>');
+  $("#aiCancel").onclick=closeSheet;
+  $("#aiSave").onclick=()=>{
+    const v=$("#aiK").value.trim();
+    if(!v){S.aiKey=null;persist();closeSheet();render();return;}
+    if(v.length<20){$("#aiWarn").innerHTML='<p class="tiny" style="color:var(--over);margin:0 0 10px">That looks too short to be a key.</p>';return;}
+    S.aiKey=v;persist();closeSheet();render();
+  };
 }
 function budgetSheet(){
   const p=meProf(), auto=(function(){const o=p.override;p.override=null;const v=baseBudget(p);p.override=o;return v;})();
@@ -1381,7 +1643,13 @@ function pickPhoto(pid,done){
   inp.click();
 }
 /* export / import */
-function backupJSON(){return JSON.stringify({app:"twospoons",exportedAt:new Date().toISOString(),state:S});}
+/* An export can be sent to a partner or saved to a file — strip every secret. */
+function exportableState(){
+  const copy=JSON.parse(JSON.stringify(S));
+  delete copy.aiKey; delete copy.garminPass; delete copy.garminState;
+  return copy;
+}
+function backupJSON(){return JSON.stringify({app:"twospoons",exportedAt:new Date().toISOString(),state:exportableState()});}
 function backupName(){return "twospoons-"+todayStr()+".json";}
 async function downloadBackup(){
   const json=backupJSON(), fn=backupName();
@@ -1658,6 +1926,8 @@ function bindMain(){
       }
       else if(a==="editprof"){editProfSheet(pid);}
       else if(a==="budget"){budgetSheet();}
+      else if(a==="aikey"){aiKeySheet();}
+      else if(a==="aiclear"){if(confirm("Remove the API key from this phone?")){S.aiKey=null;persist();render();}}
       else if(a==="invite"){openInvite();}
       else if(a==="photo"){pickPhoto(pid);}
       else if(a==="rmphoto"){S.profiles[pid].photo=null;persist();render();}
@@ -1691,6 +1961,8 @@ function bindMain(){
 }
 function bindAddSheet(){
   $("#mealSel").onchange=e=>{sheetMeal=e.target.value;};
+  const pb=document.querySelector('[data-photo="pick"]');
+  if(pb)pb.onclick=()=>openPhoto(sheetMeal);
   document.querySelectorAll("[data-st]").forEach(b=>b.onclick=()=>{sheetTab=b.dataset.st;pickedFood=null;refreshSheet();});
   bindSheetBody();
 }

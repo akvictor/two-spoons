@@ -21,9 +21,10 @@ Inspired by the parts of LoseIt! and Cal AI that actually get used day to day.
   hand; or import a Garmin Connect activity CSV. Either figure stays editable afterwards,
   and the day's budget updates immediately.
 - **Water tracking** against a per-person daily glass target.
-- **Four ways to log food** — search, plain language (`kaya toast + 2 soft boiled eggs and
-  kopi c` parses quantities and matches each item), quick-add when you just know the
-  number, and custom foods you define once and reuse.
+- **Five ways to log food** — photograph the meal and have it read for you (see below),
+  search, plain language (`kaya toast + 2 soft boiled eggs and kopi c` parses quantities
+  and matches each item), quick-add when you just know the number, and custom foods you
+  define once and reuse.
 - **Saved meals.** Bundle a meal you eat often into one entry and re-add it in a tap.
 - **237-item food database**, every entry with its own icon — heavy on Singapore hawker
   food (chicken rice, char kway teow, laksa, cai fan, kway chap, the full kopi/teh matrix)
@@ -34,6 +35,22 @@ Inspired by the parts of LoseIt! and Cal AI that actually get used day to day.
 - **Insights** — 7-day averages, days on target, and a projected weekly weight change with
   an estimated date for reaching your goal weight.
 - **Shared view** — both people's numbers, streaks, weekly chart and weight trends together.
+
+## Photo analysis
+
+Photograph a meal and Claude estimates each item and its calories. It is optional and off
+until you add your own Anthropic API key under **Settings → Photo analysis**; roughly 2¢ a
+photo, billed to your account.
+
+The key is held in that phone's browser storage and nowhere else — it is deliberately
+stripped from backups and from partner invites, and it is never committed to this
+repository. Photos are downscaled on the device before upload to keep the cost down, and
+Anthropic does not retain them after the request. Anyone who can unlock the phone can read
+the key, so set a spend limit on it in the console.
+
+Estimates are estimates: portions hidden behind other food, unclear sauces, and unusual
+serving sizes all move the number. Items the model is unsure of are marked, and every
+portion is editable before you add it.
 
 ## Garmin
 
