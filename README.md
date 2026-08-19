@@ -12,8 +12,10 @@ Inspired by the parts of LoseIt! and Cal AI that actually get used day to day.
   goal (Mifflin-St Jeor), recalculated automatically as logged weight changes.
 - **Daily log** with a calorie ring, remaining count, protein/carb/fat bars, meals split
   into breakfast / lunch / dinner / snacks, streaks, copy-yesterday, and day-by-day history.
-- **Exercise earns calories back.** Pick an activity and minutes; the burn is estimated
-  from your weight and the activity's intensity (METs) and added to that day's budget.
+- **Exercise earns calories back**, three ways: pick an activity and minutes and the burn
+  is estimated from your weight and the activity's intensity (METs); enter the numbers by
+  hand; or import a Garmin Connect activity CSV. Either figure stays editable afterwards,
+  and the day's budget updates immediately.
 - **Water tracking** against a per-person daily glass target.
 - **Four ways to log food** — search, plain language (`kaya toast + 2 soft boiled eggs and
   kopi c` parses quantities and matches each item), quick-add when you just know the
@@ -25,6 +27,17 @@ Inspired by the parts of LoseIt! and Cal AI that actually get used day to day.
 - **Insights** — 7-day averages, days on target, and a projected weekly weight change with
   an estimated date for reaching your goal weight.
 - **Shared view** — both people's numbers, streaks, weekly chart and weight trends together.
+
+## Garmin
+
+Garmin Connect on a computer exports your activities as CSV (**Activities → All Activities
+→ Export CSV**); the app reads that file and pulls out date, activity, duration and
+calories. Re-importing the same file is safe — entries are keyed by their contents, so
+nothing is duplicated.
+
+There is no live Garmin sync, and there cannot be one while the app stays serverless:
+Garmin's Health API needs an approved developer account plus a server to receive its
+webhooks, and none of that can live in a page running on the phone.
 
 ## Storage
 

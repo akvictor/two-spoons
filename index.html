@@ -39,7 +39,7 @@
   --sheet-scrim:rgba(0,0,0,.6);
 }
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
-html,body{margin:0;padding:0;overscroll-behavior:none}
+html,body{margin:0;padding:0}
 html{scrollbar-width:none;-ms-overflow-style:none}
 html::-webkit-scrollbar,body::-webkit-scrollbar,.sheet::-webkit-scrollbar,.chart::-webkit-scrollbar{width:0;height:0;display:none}
 .sheet,.chart{scrollbar-width:none}
@@ -115,7 +115,7 @@ h1,h2,h3{margin:0;text-wrap:balance}
 .tabs .ic{font-size:20px;line-height:1}
 /* sheet */
 .scrim{position:fixed;inset:0;background:var(--sheet-scrim);z-index:40;display:flex;align-items:flex-end;justify-content:center}
-.sheet{position:relative;background:var(--bg);width:100%;max-width:520px;max-height:88vh;border-radius:20px 20px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));overflow-y:auto}
+.sheet{position:relative;overscroll-behavior:contain;background:var(--bg);width:100%;max-width:520px;max-height:88vh;border-radius:20px 20px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));overflow-y:auto}
 .sheet h3{font-size:18px;margin-bottom:12px;padding-right:42px}
 .xclose{position:absolute;top:10px;right:12px;width:34px;height:34px;border-radius:50%;background:var(--line2);color:var(--ink2);font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;z-index:2}
 .grab{width:36px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 12px}
@@ -727,9 +727,9 @@ function addEntry(f,qty,meal){
   persist();
 }
 /* ================= Exercise sheet ================= */
-let pickedEx=null, exMins=30;
+let pickedEx=null, exMins=30, exTab="activity", garminRows=null, garminErr="";
 function openAddEx(){
-  pickedEx=null; exMins=30;
+  pickedEx=null; exMins=30; exTab="activity"; garminRows=null; garminErr="";
   openSheet(exSheetHTML()); bindExSheet();
 }
 function exSheetHTML(){
@@ -742,8 +742,97 @@ function exSheetHTML(){
       '<div class="row"><button class="btn" id="xBack">Back</button><button class="btn primary grow" id="xAdd">Add exercise</button></div>';
   }
   return '<h3>Add exercise</h3>'+
-    '<input id="exQ" placeholder="Search activity… (e.g. run, badminton)" autocomplete="off">'+
+    '<div class="seg">'+
+      '<button data-xt="activity" class="'+(exTab==="activity"?"on":"")+'">Activity</button>'+
+      '<button data-xt="manual" class="'+(exTab==="manual"?"on":"")+'">Manual</button>'+
+      '<button data-xt="import" class="'+(exTab==="import"?"on":"")+'">Garmin CSV</button>'+
+    '</div><div id="exBody">'+exBodyHTML()+'</div>';
+}
+function exBodyHTML(){
+  if(exTab==="manual"){
+    return '<p class="tiny muted" style="margin:4px 0 10px">Enter it yourself — use this when you already know the numbers, e.g. straight off your watch.</p>'+
+      '<div class="frow"><div><div class="flabel">Activity</div><input id="mName" placeholder="e.g. Morning run"></div></div>'+
+      '<div class="frow"><div><div class="flabel">Minutes</div><input id="mMins" type="number" inputmode="numeric" placeholder="45"></div>'+
+      '<div><div class="flabel">Calories burned</div><input id="mK" type="number" inputmode="numeric" placeholder="420"></div></div>'+
+      '<button class="btn primary" style="width:100%" id="mSave">Add exercise</button>';
+  }
+  if(exTab==="import"){
+    let h='<p class="tiny muted" style="margin:4px 0 10px">In Garmin Connect on a computer: <b>Activities</b> → <b>All Activities</b> → the <b>Export CSV</b> button. Then drop the file here, or paste its contents.</p>'+
+      '<input type="file" id="gFile" accept=".csv,text/csv">'+
+      '<textarea id="gTxt" rows="3" placeholder="…or paste the CSV here" style="margin-top:10px"></textarea>'+
+      '<button class="btn primary" style="width:100%;margin-top:10px" id="gGo">Read file</button>';
+    if(garminErr)h+='<p class="tiny" style="color:var(--over);margin-top:10px">'+esc(garminErr)+'</p>';
+    if(garminRows&&garminRows.length){
+      h+='<div class="label" style="margin:14px 0 4px">Found '+garminRows.length+' activities</div>';
+      for(const it of garminRows.slice(0,12)){
+        h+='<div class="foodrow"><span class="grow"><span class="fname">'+esc(it.name)+'</span><br><span class="fsub num">'+niceDate(it.date)+(it.mins?' · '+it.mins+' min':"")+'</span></span><b class="num" style="color:var(--burn)">+'+it.kcal+'</b></div>';
+      }
+      if(garminRows.length>12)h+='<p class="tiny muted" style="margin:6px 0 0">…and '+(garminRows.length-12)+' more.</p>';
+      h+='<button class="btn primary" style="width:100%;margin-top:12px" id="gAdd">Add all to '+esc(prof().name)+'</button>'+
+         '<p class="tiny muted">Importing the same file twice will not duplicate anything.</p>';
+    }
+    return h;
+  }
+  return '<input id="exQ" placeholder="Search activity… (e.g. run, badminton)" autocomplete="off">'+
     '<div id="exList">'+exListHTML("")+'</div>';
+}
+/* --- CSV --- */
+function parseCSV(text){
+  const rows=[];let row=[],cur="",q=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i];
+    if(q){
+      if(ch==='"'){ if(text[i+1]==='"'){cur+='"';i++;} else q=false; }
+      else cur+=ch;
+    }else{
+      if(ch==='"')q=true;
+      else if(ch===","){row.push(cur);cur="";}
+      else if(ch==="\n"){row.push(cur);cur="";rows.push(row);row=[];}
+      else if(ch!=="\r")cur+=ch;
+    }
+  }
+  if(cur.length||row.length){row.push(cur);rows.push(row);}
+  return rows.filter(r=>r.some(c=>String(c).trim()!==""));
+}
+function hhmmssToMins(t){
+  t=String(t||"").trim();
+  let m=t.match(/^(\d+):(\d+):(\d+)/);
+  if(m)return Math.round((+m[1]*3600 + +m[2]*60 + +m[3])/60);
+  m=t.match(/^(\d+):(\d+)$/);
+  if(m)return +m[1]*60+ +m[2] > 600 ? +m[1] : Math.round((+m[1]*60 + +m[2])/60);
+  return 0;
+}
+function parseGarmin(text){
+  const rows=parseCSV(text);
+  if(rows.length<2)return {error:"That doesn't look like a CSV with any rows in it."};
+  const head=rows[0].map(h=>String(h).trim().toLowerCase().replace(/^\ufeff/,""));
+  const at=n=>head.indexOf(n);
+  const iDate=at("date"), iCal=at("calories"), iType=at("activity type"), iTitle=at("title"), iTime=at("time");
+  if(iDate<0||iCal<0)return {error:"Couldn't find Date and Calories columns — is this the Activities export?"};
+  const out=[];
+  for(let i=1;i<rows.length;i++){
+    const r=rows[i];
+    const dm=String(r[iDate]||"").match(/(\d{4})-(\d{2})-(\d{2})/);
+    if(!dm)continue;
+    const kcal=Math.round(parseFloat(String(r[iCal]||"").replace(/[^0-9.]/g,"")));
+    if(!(kcal>0))continue;
+    const name=(iTitle>=0&&String(r[iTitle]||"").trim())||(iType>=0&&String(r[iType]||"").trim())||"Garmin activity";
+    out.push({date:dm[1]+"-"+dm[2]+"-"+dm[3],name:name,mins:iTime>=0?hhmmssToMins(r[iTime]):0,kcal:kcal});
+  }
+  if(!out.length)return {error:"Found the columns, but no rows with a date and calories."};
+  return {rows:out};
+}
+function importGarmin(list){
+  let added=0,skipped=0;
+  for(const it of list){
+    const id="garmin:"+it.date+":"+it.name+":"+it.kcal+":"+it.mins;
+    const day=S.ex[S.active][it.date]||(S.ex[S.active][it.date]=[]);
+    if(day.some(x=>x.id===id)){skipped++;continue;}
+    day.push({id:id,name:it.name,met:null,mins:it.mins,kcal:it.kcal,ts:Date.now(),src:"garmin"});
+    added++;
+  }
+  persist();
+  return {added:added,skipped:skipped};
 }
 function exKcal(met,kg,mins){return met*kg*(mins/60);}
 function exListHTML(q){
@@ -760,16 +849,20 @@ function openEditEx(id){
   const e=exEntries(S.active,S.date).find(x=>x.id===id); if(!e)return;
   const p=prof(), w=latestWeight(p.id)||p.weight;
   openSheet('<h3>'+esc(e.name)+'</h3>'+
-   '<div class="qtyrow"><span class="tiny muted">Minutes</span><div class="stepper"><button id="xMinus">−</button><span class="val num" id="xVal">'+e.mins+'</span><button id="xPlus">+</button></div>'+
-   '<span class="grow"></span><b class="num" id="xKcal" style="color:var(--burn)">+'+r0(e.kcal)+' kcal</b></div>'+
+   '<div class="qtyrow"><span class="tiny muted">Minutes</span><div class="stepper"><button id="xMinus">−</button><span class="val num" id="xVal">'+e.mins+'</span><button id="xPlus">+</button></div></div>'+
+   '<div class="frow"><div><div class="flabel">Calories burned</div><input id="xK" type="number" inputmode="numeric" value="'+r0(e.kcal)+'"></div></div>'+
+   '<p class="tiny muted" style="margin:-4px 0 12px">'+(e.src==="garmin"?"Imported from Garmin — edit either figure if you want.":e.met?"Changing the minutes re-estimates the calories; type over it to set your own.":"Entered by hand.")+'</p>'+
    '<div class="row"><button class="btn danger" id="xDel">Delete</button><button class="btn primary grow" id="xSave">Save</button></div>');
   let mins=e.mins;
-  const met=e.met||3;
-  const upd=()=>{$("#xVal").textContent=mins;$("#xKcal").textContent="+"+r0(exKcal(met,w,mins))+" kcal";};
-  $("#xMinus").onclick=()=>{mins=Math.max(5,mins-5);upd();};
+  const upd=()=>{$("#xVal").textContent=mins;if(e.met)$("#xK").value=r0(exKcal(e.met,w,mins));};
+  $("#xMinus").onclick=()=>{mins=Math.max(0,mins-5);upd();};
   $("#xPlus").onclick=()=>{mins+=5;upd();};
   $("#xDel").onclick=()=>{S.ex[S.active][S.date]=exEntries(S.active,S.date).filter(x=>x.id!==id);persist();closeSheet();render();};
-  $("#xSave").onclick=()=>{e.mins=mins;e.kcal=exKcal(met,w,mins);persist();closeSheet();render();};
+  $("#xSave").onclick=()=>{
+    const k=+$("#xK").value;
+    if(!(k>0)){alert("Enter how many calories that burned.");return;}
+    e.mins=mins; e.kcal=k; persist();closeSheet();render();
+  };
 }
 /* ================= charts ================= */
 function barChart(days,series,bud){
@@ -1245,6 +1338,42 @@ function bindFoodRows(){
   });
 }
 function bindExSheet(){
+  document.querySelectorAll("[data-xt]").forEach(b=>b.onclick=()=>{exTab=b.dataset.xt;pickedEx=null;refreshExSheet();});
+  if($("#mSave")){
+    $("#mSave").onclick=()=>{
+      const nm=$("#mName").value.trim(), mins=parseInt($("#mMins").value)||0, k=+$("#mK").value;
+      if(!(k>0)){alert("Enter how many calories it burned.");return;}
+      const day=S.ex[S.active][S.date]||(S.ex[S.active][S.date]=[]);
+      day.push({id:uid(),name:nm||"Exercise",met:null,mins:mins,kcal:r0(k),ts:Date.now()});
+      persist();closeSheet();render();
+    };
+  }
+  if($("#gGo")){
+    const readIn=txt=>{
+      const res=parseGarmin(txt);
+      garminErr=res.error||""; garminRows=res.rows||null;
+      refreshExSheet();
+    };
+    $("#gFile").onchange=e=>{
+      const f=e.target.files[0]; if(!f)return;
+      const rd=new FileReader();
+      rd.onload=()=>readIn(String(rd.result));
+      rd.onerror=()=>{garminErr="Couldn't read that file.";refreshExSheet();};
+      rd.readAsText(f);
+    };
+    $("#gGo").onclick=()=>{
+      const t=$("#gTxt").value.trim();
+      if(!t){garminErr="Choose the CSV file above, or paste its contents first.";refreshExSheet();return;}
+      readIn(t);
+    };
+    if($("#gAdd")){
+      $("#gAdd").onclick=()=>{
+        const res=importGarmin(garminRows);
+        closeSheet();render();
+        alert("Added "+res.added+" activities"+(res.skipped?", skipped "+res.skipped+" already there":"")+".");
+      };
+    }
+  }
   const q=$("#exQ");
   if(q){q.oninput=()=>{$("#exList").innerHTML=exListHTML(q.value.trim());bindExRows();};bindExRows();
     if(!("ontouchstart" in window))q.focus();}
