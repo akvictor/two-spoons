@@ -1,6 +1,9 @@
 <title>Two Spoons</title>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#16201D">
@@ -36,14 +39,20 @@
   --sheet-scrim:rgba(0,0,0,.6);
 }
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
-html,body{margin:0;padding:0}
+html,body{margin:0;padding:0;overscroll-behavior:none}
+html{scrollbar-width:none;-ms-overflow-style:none}
+html::-webkit-scrollbar,body::-webkit-scrollbar,.sheet::-webkit-scrollbar,.chart::-webkit-scrollbar{width:0;height:0;display:none}
+.sheet,.chart{scrollbar-width:none}
 body{
   background:var(--bg); color:var(--ink);
+  touch-action:manipulation;
+  -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
+  -webkit-text-size-adjust:100%; text-size-adjust:100%;
   font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
   padding-bottom:calc(76px + env(safe-area-inset-bottom));
 }
 button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;padding:0}
-input,select,textarea{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
+input,select,textarea{-webkit-user-select:text;user-select:text;font:inherit;font-size:16px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
 input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--p1);outline-offset:1px}
 .app{max-width:520px;margin:0 auto;padding:0 16px}
 .num{font-variant-numeric:tabular-nums}
@@ -151,6 +160,8 @@ h1,h2,h3{margin:0;text-wrap:balance}
 details.dtable{margin-top:8px} details.dtable summary{font-size:12.5px;color:var(--ink3);cursor:pointer}
 table.data{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
 table.data td,table.data th{padding:4px 6px;border-bottom:1px solid var(--line2);text-align:right}
+table.data,.num,.fname,.fsub{-webkit-user-select:text;user-select:text}
+.tipbar{background:var(--p1-soft);border:1px solid var(--p1);border-radius:12px;padding:10px 12px;font-size:13px;margin:10px 0 0}
 table.data th:first-child,table.data td:first-child{text-align:left}
 @media (prefers-reduced-motion:no-preference){
   .ringprog{transition:stroke-dashoffset .5s ease}
@@ -458,6 +469,7 @@ function render(){
     '<div class="row" style="margin-top:10px"><button class="btn small grow" data-act="backupnow">Save backup</button>'+
     '<button class="btn small grow" data-act="import">Restore backup</button></div></div>';
   html+=topbarHTML();
+  html+=homeScreenTipHTML();
   if(S.tab==="today") html+=todayHTML();
   else if(S.tab==="trends") html+=trendsHTML();
   else if(S.tab==="us") html+=usHTML();
@@ -1036,7 +1048,7 @@ async function downloadBackup(){
 function doExport(){
   const json=backupJSON();
   const out=$("#exportOut");
-  out.innerHTML='<textarea rows="3" readonly id="expTxt" style="margin-top:10px;font-size:11px">'+esc(json)+'</textarea>'+
+  out.innerHTML='<textarea rows="3" readonly id="expTxt" style="margin-top:10px;font-size:16px">'+esc(json)+'</textarea>'+
    '<div class="row" style="margin-top:8px"><button class="btn small grow" id="expCopy">Copy to clipboard</button><button class="btn small grow" id="expDl">Download file</button></div>';
   $("#expCopy").onclick=async()=>{try{await navigator.clipboard.writeText(json);$("#expCopy").textContent="Copied ✓";}catch(e){$("#expTxt").select();document.execCommand("copy");$("#expCopy").textContent="Copied ✓";}};
   $("#expDl").onclick=async()=>{
@@ -1145,6 +1157,7 @@ function bindMain(){
       else if(a==="photo"){pickPhoto(pid);}
       else if(a==="rmphoto"){S.profiles[pid].photo=null;persist();render();}
       else if(a==="backupnow"){downloadBackup().then(ok=>{if(!ok){S.tab="settings";render();doExport();}});}
+      else if(a==="hidetip"){S.hideTip=true;persist();render();}
       else if(a==="export"){doExport();}
       else if(a==="import"){doImport();}
       else if(a==="reset"){if(confirm("Erase ALL data for both of you on this phone?")){S=blank();persist();render();}}
@@ -1258,6 +1271,23 @@ function bindExRows(){
     const row=EXERCISES.find(x=>x[0]===b.dataset.ex); if(!row)return;
     pickedEx={name:row[0],met:row[1]}; exMins=30; refreshExSheet();
   });
+}
+/* iOS Safari ignores user-scalable=no, so refuse the pinch gestures directly.
+   touch-action:manipulation above already kills double-tap zoom. */
+["gesturestart","gesturechange","gestureend"].forEach(t=>
+  document.addEventListener(t,e=>e.preventDefault(),{passive:false}));
+function isStandalone(){
+  return (window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches)||navigator.standalone===true;
+}
+function isTouch(){return ("ontouchstart" in window)||navigator.maxTouchPoints>0;}
+function homeScreenTipHTML(){
+  if(isStandalone()||S.hideTip||!isTouch())return "";
+  const ios=/iPad|iPhone|iPod/.test(navigator.userAgent)||
+            (navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+  return '<div class="tipbar"><b>Run it like an app.</b> '+
+    (ios?'Tap <b>Share</b>, then <b>Add to Home Screen</b>':'Open the browser menu, then <b>Install app</b>')+
+    ' — it opens full screen with no address bar.'+
+    '<div style="margin-top:8px"><button class="btn small" data-act="hidetip">Got it</button></div></div>';
 }
 /* ================= boot ================= */
 (async function boot(){
