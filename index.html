@@ -10,33 +10,33 @@
 <style>
 /* ---------- tokens ---------- */
 :root{
-  --bg:#FBFAF7; --card:#FFFFFF; --ink:#26241F; --ink2:#6B675E; --ink3:#98938A;
-  --line:#E8E5DE; --line2:#F1EFE9;
+  --bg:#FFF6E9; --card:#FFFFFF; --ink:#2B2622; --ink2:#6B675E; --ink3:#9C968C;
+  --line:#2B2622; --line2:#F3EADC; --edge:#E3D6C2;
   --p1:#3565C0; --p1-soft:#E5EDFB; --p2:#C06722; --p2-soft:#F9EDE1;
   --good:#2E7D4F; --good-soft:#E3F1E8; --over:#C03A2E; --over-soft:#F9E6E4;
   --burn:#7A5AA8; --burn-soft:#EFE8F7; --water:#2E7B93; --water-soft:#E1F0F4;
-  --ring-track:#EEEBE4; --shadow:0 1px 3px rgba(38,36,31,.08),0 4px 16px rgba(38,36,31,.06);
-  --sheet-scrim:rgba(38,36,31,.45);
+  --ring-track:#F0E4D2; --shadow:0 3px 0 var(--line);
+  --sheet-scrim:rgba(43,38,34,.45); --rad:22px;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --bg:#16201D; --card:#1E2A26; --ink:#EAE8E2; --ink2:#A9B0AA; --ink3:#7B837D;
-    --line:#2C3833; --line2:#243029;
+    --bg:#141F1C; --card:#20302B; --ink:#F2EFE7; --ink2:#A9B0AA; --ink3:#7B837D;
+    --line:#0C1512; --line2:#2A3A34; --edge:#0C1512;
     --p1:#5B87DF; --p1-soft:#233046; --p2:#CE7429; --p2-soft:#3A2C1C;
     --good:#5CB884; --good-soft:#1F3529; --over:#E06B5F; --over-soft:#3E2523;
     --burn:#A98CD8; --burn-soft:#2B2440; --water:#5FAFC4; --water-soft:#1B3138;
-    --ring-track:#2C3833; --shadow:0 1px 3px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.25);
-    --sheet-scrim:rgba(0,0,0,.6);
+    --ring-track:#2A3A34; --shadow:0 3px 0 var(--edge);
+    --sheet-scrim:rgba(0,0,0,.6); --rad:22px;
   }
 }
 :root[data-theme="dark"]{
-  --bg:#16201D; --card:#1E2A26; --ink:#EAE8E2; --ink2:#A9B0AA; --ink3:#7B837D;
-  --line:#2C3833; --line2:#243029;
+  --bg:#141F1C; --card:#20302B; --ink:#F2EFE7; --ink2:#A9B0AA; --ink3:#7B837D;
+  --line:#0C1512; --line2:#2A3A34; --edge:#0C1512;
   --p1:#5B87DF; --p1-soft:#233046; --p2:#CE7429; --p2-soft:#3A2C1C;
   --good:#5CB884; --good-soft:#1F3529; --over:#E06B5F; --over-soft:#3E2523;
   --burn:#A98CD8; --burn-soft:#2B2440; --water:#5FAFC4; --water-soft:#1B3138;
-  --ring-track:#2C3833; --shadow:0 1px 3px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.25);
-  --sheet-scrim:rgba(0,0,0,.6);
+  --ring-track:#2A3A34; --shadow:0 3px 0 var(--edge);
+  --sheet-scrim:rgba(0,0,0,.6); --rad:22px;
 }
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0}
@@ -48,37 +48,45 @@ body{
   touch-action:manipulation;
   -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
   -webkit-text-size-adjust:100%; text-size-adjust:100%;
-  font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+  font:16px/1.45 ui-rounded,"SF Pro Rounded","Hiragino Maru Gothic ProN",Quicksand,Nunito,
+       -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
   padding-bottom:calc(76px + env(safe-area-inset-bottom));
 }
 button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;padding:0}
-input,select,textarea{-webkit-user-select:text;user-select:text;font:inherit;font-size:16px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
+input,select,textarea{-webkit-user-select:text;user-select:text;font:inherit;font-size:16px;color:var(--ink);background:var(--card);border:2.5px solid var(--edge);border-radius:14px;padding:10px 12px;width:100%}
+input:focus,select:focus,textarea:focus{border-color:var(--p1)}
 input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--p1);outline-offset:1px}
 .app{max-width:520px;margin:0 auto;padding:0 16px}
 .num{font-variant-numeric:tabular-nums}
-h1,h2,h3{margin:0;text-wrap:balance}
+h1,h2,h3{margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1,h3{font-weight:800}
 .label{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3)}
-.card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:16px;margin-bottom:14px}
+.card{background:var(--card);border:2.5px solid var(--line);border-radius:var(--rad);box-shadow:var(--shadow);padding:16px;margin-bottom:14px}
 .muted{color:var(--ink2)} .tiny{font-size:12.5px}
 .row{display:flex;align-items:center;gap:10px}
 .grow{flex:1;min-width:0}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:12px;padding:11px 16px;font-weight:600;border:1px solid var(--line);background:var(--card)}
-.btn.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
-.btn.small{padding:6px 12px;font-size:14px;border-radius:10px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:16px;padding:11px 16px;
+  font-weight:750;border:2.5px solid var(--line);background:var(--card);box-shadow:0 3px 0 var(--line);
+  transition:transform .06s ease,box-shadow .06s ease}
+.btn:active{transform:translateY(3px);box-shadow:0 0 0 var(--line)}
+.btn.primary{background:var(--p1);color:#fff;border-color:var(--line)}
+.btn.small{padding:7px 13px;font-size:14px;border-radius:13px;box-shadow:0 2.5px 0 var(--line)}
+.btn.small:active{transform:translateY(2px)}
 .btn.danger{color:var(--over);border-color:var(--over)}
 /* avatars */
 .av{border-radius:50%;object-fit:cover;flex:none;display:inline-flex;align-items:center;justify-content:center;
-    font-weight:700;color:#fff;background:var(--ink3);overflow:hidden;line-height:1}
+    font-weight:800;color:#fff;background:var(--ink3);overflow:hidden;line-height:1;border:2.5px solid var(--line)}
 .av.c1{background:var(--p1)} .av.c2{background:var(--p2)}
 .av img{width:100%;height:100%;object-fit:cover;display:block}
 /* top bar */
 .topbar{position:sticky;top:0;z-index:20;background:var(--bg);padding:10px 0 8px;display:flex;flex-direction:column;gap:10px}
 .datebar{display:flex;align-items:center;justify-content:space-between}
-.datebar .dnav{width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--card);font-size:18px;display:flex;align-items:center;justify-content:center}
+.datebar .dnav{width:42px;height:42px;border-radius:14px;border:2.5px solid var(--line);background:var(--card);font-size:19px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 2.5px 0 var(--line)}
+.datebar .dnav:active{transform:translateY(2.5px);box-shadow:none}
 .datebar .dlabel{font-weight:700;font-size:17px;text-align:center}
 .datebar .dsub{font-size:12.5px;color:var(--ink2);text-align:center}
 .who{display:flex;gap:8px}
-.who .chip{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:7px 10px;border-radius:12px;border:1.5px solid var(--line);background:var(--card);font-weight:600;color:var(--ink2);min-width:0}
+.who .chip{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:7px 10px;border-radius:16px;border:2.5px solid var(--line);background:var(--card);font-weight:700;color:var(--ink2);min-width:0}
 .who .chip span.nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .who .chip.on{color:var(--ink)}
 .who .chip.on.c1{border-color:var(--p1);background:var(--p1-soft)}
@@ -88,47 +96,56 @@ h1,h2,h3{margin:0;text-wrap:balance}
 .ringnums .big{font-size:36px;font-weight:800;letter-spacing:-.02em;line-height:1.05}
 .ringnums .big.over{color:var(--over)}
 .eqn{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
-.eqn .bit{font-size:12px;color:var(--ink2)}
+.eqn .bit{font-size:12px;color:var(--ink2);background:var(--line2);border-radius:999px;padding:4px 10px;font-weight:600}
 .eqn .bit b{color:var(--ink)}
 .macros{display:flex;gap:10px;margin-top:14px}
 .macro{flex:1}
-.macro .bar{height:6px;border-radius:3px;background:var(--ring-track);overflow:hidden;margin-top:5px}
-.macro .bar i{display:block;height:100%;border-radius:3px;background:var(--ink2)}
+.macro .bar{height:9px;border-radius:5px;background:var(--ring-track);overflow:hidden;margin-top:5px;border:2px solid var(--line)}
+.macro .bar i{display:block;height:100%;background:var(--p1)}
 .macro .bar i.full{background:var(--good)}
 /* meals + entries */
 .meal{margin-bottom:14px}
 .mealhead{display:flex;align-items:baseline;justify-content:space-between;padding:0 2px 6px;gap:8px}
 .mealhead .sv{font-size:12px;color:var(--p1);font-weight:600}
-.entry{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:6px;width:100%;text-align:left}
+.entry{display:flex;align-items:center;gap:10px;background:var(--card);border:2.5px solid var(--line);border-radius:16px;
+  padding:10px 12px;margin-bottom:8px;width:100%;text-align:left;box-shadow:0 2.5px 0 var(--line);
+  transition:transform .06s ease,box-shadow .06s ease}
+.entry:active{transform:translateY(2.5px);box-shadow:0 0 0 var(--line)}
+.eic{font-size:22px;flex:none;width:28px;text-align:center}
+.fic{font-size:22px;flex:none;width:28px;text-align:center}
 .entry .kc{font-weight:700}
 .entry.ex .kc{color:var(--burn)}
-.addline{width:100%;border:1.5px dashed var(--line);border-radius:12px;padding:10px;color:var(--ink2);font-weight:600;text-align:center}
+.addline{width:100%;border:2.5px dashed var(--edge);border-radius:16px;padding:11px;color:var(--ink2);font-weight:700;text-align:center}
+.addline:active{transform:translateY(2px)}
 /* water */
 .glasses{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
-.glass{width:26px;height:32px;border-radius:4px 4px 8px 8px;border:2px solid var(--water);background:transparent}
+.glass{width:28px;height:34px;border-radius:5px 5px 11px 11px;border:2.5px solid var(--water);background:transparent;transition:transform .1s ease}
+.glass.on{transform:scale(1.06)}
+.glass:active{transform:scale(.9)}
 .glass.on{background:var(--water)}
 /* tabs */
-.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--card);border-top:2.5px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
 .tabs .in{max-width:520px;margin:0 auto;display:flex}
 .tabs button{flex:1;padding:9px 0 7px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;font-weight:600;color:var(--ink3)}
 .tabs button.on{color:var(--ink)}
-.tabs .ic{font-size:20px;line-height:1}
+.tabs .ic{font-size:21px;line-height:1;transition:transform .12s ease}
+.tabs button.on .ic{transform:scale(1.22) translateY(-1px)}
 /* sheet */
 .scrim{position:fixed;inset:0;background:var(--sheet-scrim);z-index:40;display:flex;align-items:flex-end;justify-content:center}
-.sheet{position:relative;overscroll-behavior:contain;background:var(--bg);width:100%;max-width:520px;max-height:88vh;border-radius:20px 20px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));overflow-y:auto}
+.sheet{position:relative;overscroll-behavior:contain;background:var(--bg);width:100%;max-width:520px;max-height:88vh;border-radius:26px 26px 0 0;border-top:3px solid var(--line);padding:16px 16px calc(16px + env(safe-area-inset-bottom));overflow-y:auto}
 .sheet h3{font-size:18px;margin-bottom:12px;padding-right:42px}
 .xclose{position:absolute;top:10px;right:12px;width:34px;height:34px;border-radius:50%;background:var(--line2);color:var(--ink2);font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;z-index:2}
 .grab{width:36px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 12px}
-.seg{display:flex;background:var(--line2);border-radius:11px;padding:3px;margin-bottom:12px}
+.seg{display:flex;background:var(--line2);border-radius:15px;padding:4px;margin-bottom:12px;border:2.5px solid var(--edge)}
 .seg button{flex:1;padding:7px 4px;border-radius:8px;font-size:13px;font-weight:600;color:var(--ink2)}
-.seg button.on{background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
+.seg button.on{background:var(--card);color:var(--ink);border-radius:11px;box-shadow:0 2px 0 var(--edge)}
 .foodrow{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:10px 4px;border-bottom:1px solid var(--line2)}
 .fmain{display:flex;align-items:center;gap:10px;flex:1;min-width:0;text-align:left;padding:0}
 .star{width:38px;height:38px;flex:none;border-radius:50%;font-size:18px;color:var(--ink3);display:flex;align-items:center;justify-content:center}
 .star.on{color:#E0A32E}
 .foodrow .fname{font-weight:600}
 .foodrow .fsub{font-size:12.5px;color:var(--ink2)}
-.stepper{display:flex;align-items:center;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.stepper{display:flex;align-items:center;border:2.5px solid var(--line);border-radius:16px;overflow:hidden}
 .stepper button{width:44px;height:44px;font-size:20px;background:var(--card)}
 .stepper .val{min-width:70px;text-align:center;font-weight:700}
 .qtyrow{display:flex;gap:10px;align-items:center;margin:12px 0}
@@ -140,7 +157,7 @@ h1,h2,h3{margin:0;text-wrap:balance}
 #tip{position:fixed;z-index:60;background:var(--ink);color:var(--bg);font-size:12.5px;padding:6px 9px;border-radius:8px;pointer-events:none;display:none;max-width:220px}
 /* us */
 .uspair{display:flex;gap:10px}
-.uscard{flex:1;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;border-top:3px solid var(--line);min-width:0}
+.uscard{flex:1;background:var(--card);border:2.5px solid var(--line);border-radius:var(--rad);padding:14px;border-top:7px solid var(--line);min-width:0;box-shadow:var(--shadow)}
 .uscard.c1{border-top-color:var(--p1)} .uscard.c2{border-top-color:var(--p2)}
 .uscard .nm{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* stats */
@@ -153,7 +170,7 @@ h1,h2,h3{margin:0;text-wrap:balance}
 .frow>div{flex:1;min-width:0}
 .flabel{font-size:12.5px;font-weight:600;color:var(--ink2);margin-bottom:4px}
 .banner{background:var(--over-soft);color:var(--over);border-radius:12px;padding:10px 12px;font-size:13.5px;margin-bottom:12px}
-.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:700}
+.pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:800;border:2px solid currentColor}
 .pill.good{background:var(--good-soft);color:var(--good)}
 .pill.over{background:var(--over-soft);color:var(--over)}
 .pill.burn{background:var(--burn-soft);color:var(--burn)}
@@ -164,7 +181,9 @@ table.data,.num,.fname,.fsub{-webkit-user-select:text;user-select:text}
 .tipbar{background:var(--p1-soft);border:1px solid var(--p1);border-radius:12px;padding:10px 12px;font-size:13px;margin:10px 0 0}
 table.data th:first-child,table.data td:first-child{text-align:left}
 @media (prefers-reduced-motion:no-preference){
-  .ringprog{transition:stroke-dashoffset .5s ease}
+  .ringprog{transition:stroke-dashoffset .6s cubic-bezier(.34,1.56,.64,1)}
+  .card{animation:pop .26s cubic-bezier(.34,1.56,.64,1) both}
+  @keyframes pop{from{transform:scale(.97);opacity:0}to{transform:none;opacity:1}}
   .sheet{animation:up .22s ease}
   @keyframes up{from{transform:translateY(30px);opacity:.6}to{transform:none;opacity:1}}
 }
@@ -178,119 +197,243 @@ table.data th:first-child,table.data td:first-child{text-align:left}
 /* ================= Food database (per-serving estimates; SG hawker + staples) ================= */
 /* [name, serving, kcal, protein g, carbs g, fat g, keywords] */
 const FOODS=[
-["Chicken rice","1 plate",620,25,75,23,"hainanese"],
-["Char kway teow","1 plate",740,13,76,38,"ckt"],
-["Laksa","1 bowl",590,25,58,28,""],
-["Mee goreng","1 plate",500,14,61,20,""],
-["Nasi lemak with chicken wing","1 plate",640,18,80,26,""],
-["Nasi lemak (basic)","1 plate",400,8,58,15,""],
-["Roti prata (plain)","1 piece",210,5,32,7,"paratha"],
-["Roti prata (egg)","1 piece",290,9,33,13,""],
-["Thosai","1 piece",120,3,25,1,"dosa dosai"],
-["Kaya toast","2 slices",320,6,44,13,""],
-["Soft-boiled eggs","2 eggs",140,12,1,10,"half boiled"],
-["Bak chor mee (dry)","1 bowl",480,22,50,20,"minced meat noodle"],
-["Wanton mee (dry)","1 plate",560,22,70,20,"wonton"],
-["Fishball noodles (soup)","1 bowl",380,18,52,10,""],
-["Ban mian (soup)","1 bowl",480,20,58,17,"banmian"],
-["Hokkien mee","1 plate",620,22,70,26,"prawn noodle fried"],
-["Prawn noodle soup","1 bowl",440,22,56,12,"hae mee"],
-["Yong tau foo (6 pc, soup)","1 bowl",300,20,28,10,"ytf"],
-["Economy rice (1 meat 2 veg)","1 plate",600,25,70,22,"cai fan mixed rice caifan"],
-["Duck rice","1 plate",600,24,72,22,""],
-["Char siew rice","1 plate",600,26,74,20,"roast pork"],
-["Roast chicken rice","1 plate",610,27,73,21,""],
-["Sliced fish soup (with rice)","1 bowl",400,28,50,7,""],
-["Thunder tea rice","1 bowl",550,18,80,16,"lei cha"],
-["Mala xiang guo (small)","1 bowl",800,30,50,50,"ma la"],
-["Fried carrot cake (black)","1 plate",490,9,60,24,"chai tow kway"],
-["Fried carrot cake (white)","1 plate",470,10,52,25,"chai tow kway"],
-["Popiah","1 roll",190,7,28,5,""],
-["Satay","1 stick",90,7,3,5,""],
-["Curry puff","1 piece",330,6,31,20,"karipap"],
-["Char siew pau","1 piece",220,8,33,6,"bao bun"],
-["Siew mai","1 piece",50,3,4,2,"shumai dimsum"],
-["Har gow","1 piece",40,2,5,1,"prawn dumpling dimsum"],
-["You tiao","1 piece",220,3,25,12,"dough fritter"],
-["Chwee kueh","4 pieces",240,3,40,8,""],
-["Chee cheong fun","1 plate",260,6,48,5,""],
-["Otah","1 piece",90,6,4,6,"otak"],
-["Ondeh ondeh","3 pieces",190,2,35,5,""],
-["Kopi","1 cup",120,2,22,3,"coffee condensed"],
-["Kopi C","1 cup",100,2,15,3,"coffee evaporated"],
-["Kopi O","1 cup",60,0,14,0,"black coffee sugar"],
-["Kopi O kosong","1 cup",5,0,1,0,"black coffee no sugar"],
-["Teh","1 cup",140,2,26,3,"tea condensed"],
-["Teh C","1 cup",110,2,18,3,""],
-["Teh O","1 cup",60,0,15,0,""],
-["Teh tarik","1 cup",180,4,30,5,""],
-["Milo","1 cup",200,5,32,5,""],
-["Bubble tea (full sugar, pearls)","500 ml",340,2,72,5,"boba milk tea bbt"],
-["Bubble tea (less sugar, pearls)","500 ml",250,2,52,4,"boba milk tea bbt"],
-["Fresh sugarcane juice","1 cup",180,0,45,0,""],
-["Barley water","1 cup",110,0,27,0,""],
-["Soya bean milk (sweetened)","1 cup",140,6,22,3,"soybean"],
-["Coke","1 can 330 ml",140,0,35,0,"cola soft drink"],
-["Beer","1 can 330 ml",145,1,11,0,"tiger heineken"],
-["Fish & chips","1 plate",800,32,70,44,"western"],
-["Chicken chop","1 plate",700,38,50,38,"western"],
-["Aglio olio (chicken)","1 plate",560,28,62,22,"pasta"],
-["Carbonara","1 plate",750,25,70,40,"pasta"],
-["Big Mac","1 burger",550,25,45,30,"mcdonalds mcd"],
-["McSpicy","1 burger",560,27,46,30,"mcdonalds mcd"],
-["McDonald's fries (M)","1 pack",340,4,44,16,"mcd"],
-["Chicken nuggets","6 pieces",260,15,16,15,"mcd mcdonalds"],
-["Fried chicken","1 piece",290,20,10,19,"kfc drumstick thigh"],
-["Pizza (regular slice)","1 slice",250,10,29,10,""],
-["Sushi (salmon nigiri)","2 pieces",130,7,18,3,""],
-["Sushi roll (california)","6 pieces",250,7,38,7,"maki"],
-["Sashimi (salmon)","5 slices",120,15,0,6,""],
-["Chicken shawarma wrap","1 wrap",480,26,45,20,"kebab"],
-["White rice","1 bowl",200,4,44,1,"steamed"],
-["Brown rice","1 bowl",220,5,45,2,""],
-["Chapati","1 piece",120,4,18,3,""],
-["Bee hoon (fried)","1 plate",350,8,55,10,"vermicelli"],
-["Instant noodles","1 pack",400,9,54,16,"maggi ramen indomie"],
-["Bread","1 slice",80,3,15,1,"white wholemeal"],
-["Peanut butter","1 tbsp",95,4,3,8,""],
-["Kaya","1 tbsp",60,0,11,2,""],
-["Butter","1 tsp",35,0,0,4,""],
-["Egg","1 egg",70,6,0,5,"boiled fried"],
-["Chicken breast (cooked)","100 g",165,31,0,4,"grilled"],
-["Chicken thigh (cooked)","100 g",210,26,0,11,""],
-["Salmon (cooked)","100 g",210,22,0,13,""],
-["White fish (steamed)","100 g",110,23,0,2,"dory cod"],
-["Prawns (cooked)","100 g",100,21,1,1,"shrimp"],
-["Lean beef (cooked)","100 g",220,30,0,10,"steak"],
-["Pork lean (cooked)","100 g",200,27,0,10,""],
-["Tofu","100 g",76,8,2,5,"beancurd tau kwa"],
-["Tempeh","100 g",190,19,9,11,""],
-["Mixed vegetables (stir-fried)","1 serving",80,3,8,4,"veg greens kailan chye sim"],
-["Broccoli (cooked)","100 g",35,3,7,0,""],
-["Salad (no dressing)","1 bowl",50,3,8,1,"garden"],
-["Caesar salad","1 bowl",350,12,15,28,""],
-["Oats","40 g dry",150,5,27,3,"oatmeal porridge"],
-["Muesli","50 g",190,5,33,4,"granola"],
-["Greek yogurt (plain)","100 g",60,10,4,0,"yoghurt"],
-["Milk (low-fat)","250 ml",110,9,12,3,""],
-["Milk (full cream)","250 ml",160,8,12,9,"whole"],
-["Protein shake","1 scoop",120,24,3,1,"whey"],
-["Banana","1 medium",105,1,27,0,""],
-["Apple","1 medium",95,0,25,0,""],
-["Orange","1 medium",60,1,15,0,""],
-["Papaya","1 cup",55,1,14,0,""],
-["Watermelon","1 cup",46,1,12,0,""],
-["Grapes","1 cup",100,1,26,0,""],
-["Durian","3 seeds",200,3,28,8,""],
-["Mixed nuts","30 g",180,5,6,16,"almonds cashews"],
-["Dark chocolate","2 squares 20 g",110,1,9,8,""],
-["Potato chips","small bag 30 g",160,2,15,10,"crisps"],
-["Ice cream","1 scoop",140,2,16,7,""],
-["Chendol","1 bowl",380,5,60,14,"cendol"],
-["Ice kachang","1 bowl",250,3,55,2,""],
-["Tau huay","1 bowl",130,6,20,3,"beancurd soya"],
-["Mooncake (lotus, 1 yolk)","1/4 piece",190,3,26,8,""],
-["Pineapple tart","1 piece",80,1,11,4,""],
+["Chicken rice","1 plate",620,25,75,23,"hainanese","🍗"],
+["Chicken rice (steamed, skinless)","1 plate",480,30,72,8,"hainanese healthy","🍗"],
+["Duck rice","1 plate",600,24,72,22,"","🦆"],
+["Char siew rice","1 plate",600,26,74,20,"roast pork","🍖"],
+["Roast chicken rice","1 plate",610,27,73,21,"","🍗"],
+["Economy rice (1 meat 2 veg)","1 plate",600,25,70,22,"cai fan mixed rice caifan","🍱"],
+["Economy rice (2 meat 1 veg)","1 plate",750,35,72,32,"cai fan caifan","🍱"],
+["Nasi lemak with chicken wing","1 plate",640,18,80,26,"","🍛"],
+["Nasi lemak (basic)","1 plate",400,8,58,15,"","🍛"],
+["Nasi briyani with chicken","1 plate",880,38,95,38,"biryani","🍛"],
+["Nasi padang","1 plate",700,28,80,30,"","🍛"],
+["Claypot rice","1 pot",620,26,80,20,"","🍲"],
+["Fried rice","1 plate",560,18,72,22,"nasi goreng","🍚"],
+["Salted egg chicken rice","1 plate",780,30,80,36,"","🍚"],
+["Sweet and sour pork with rice","1 plate",720,26,90,28,"zi char","🍖"],
+["Thunder tea rice","1 bowl",550,18,80,16,"lei cha","🍵"],
+["Bak kut teh with rice","1 set",600,35,60,22,"","🍲"],
+["Kway chap","1 set",620,25,55,32,"","🍲"],
+["White rice","1 bowl",200,4,44,1,"steamed","🍚"],
+["Brown rice","1 bowl",220,5,45,2,"","🍚"],
+["Porridge (plain)","1 bowl",120,2,27,0,"congee","🥣"],
+["Century egg porridge","1 bowl",280,10,42,8,"congee","🥣"],
+["Fish porridge","1 bowl",320,22,40,6,"congee","🥣"],
+["Char kway teow","1 plate",740,13,76,38,"ckt","🍜"],
+["Laksa","1 bowl",590,25,58,28,"","🍜"],
+["Mee goreng","1 plate",500,14,61,20,"","🍜"],
+["Mee rebus","1 bowl",560,18,78,18,"","🍜"],
+["Mee siam","1 bowl",480,12,72,15,"","🍜"],
+["Bak chor mee (dry)","1 bowl",480,22,50,20,"minced meat noodle","🍜"],
+["Bak chor mee (soup)","1 bowl",400,22,48,12,"minced meat noodle","🍜"],
+["Wanton mee (dry)","1 plate",560,22,70,20,"wonton","🍜"],
+["Wanton soup","1 bowl",180,12,18,6,"dumpling","🥟"],
+["Fishball noodles (soup)","1 bowl",380,18,52,10,"","🍥"],
+["Fishball noodles (dry)","1 bowl",470,18,62,16,"","🍥"],
+["Ban mian (soup)","1 bowl",480,20,58,17,"banmian","🍜"],
+["Hokkien mee","1 plate",620,22,70,26,"prawn noodle fried","🍤"],
+["Prawn noodle soup","1 bowl",440,22,56,12,"hae mee","🍤"],
+["Lor mee","1 bowl",550,20,72,18,"","🍜"],
+["Beef hor fun","1 plate",700,28,78,30,"","🍜"],
+["Hor fun (seafood)","1 plate",660,26,80,26,"","🍜"],
+["Bee hoon (fried)","1 plate",350,8,55,10,"vermicelli","🍜"],
+["Bee hoon soup","1 bowl",300,14,48,6,"","🍜"],
+["Yong tau foo (6 pc, soup)","1 bowl",300,20,28,10,"ytf","🍢"],
+["Yong tau foo (with laksa gravy)","1 bowl",520,22,40,28,"ytf","🍢"],
+["Sliced fish soup (with rice)","1 bowl",400,28,50,7,"","🐟"],
+["Sliced fish bee hoon (milk)","1 bowl",520,30,48,20,"","🐟"],
+["Mala xiang guo (small)","1 bowl",800,30,50,50,"ma la","🌶️"],
+["Instant noodles","1 pack",400,9,54,16,"maggi ramen indomie","🍜"],
+["Fried carrot cake (black)","1 plate",490,9,60,24,"chai tow kway","🥘"],
+["Fried carrot cake (white)","1 plate",470,10,52,25,"chai tow kway","🥘"],
+["Oyster omelette","1 plate",560,20,30,40,"orh luak","🦪"],
+["Popiah","1 roll",190,7,28,5,"","🌯"],
+["Satay","1 stick",90,7,3,5,"","🍢"],
+["Curry puff","1 piece",330,6,31,20,"karipap","🥟"],
+["Char siew pau","1 piece",220,8,33,6,"bao bun","🥟"],
+["Siew mai","1 piece",50,3,4,2,"shumai dimsum","🥟"],
+["Har gow","1 piece",40,2,5,1,"prawn dumpling dimsum","🥟"],
+["Xiao long bao","1 piece",60,3,6,3,"dimsum soup dumpling","🥟"],
+["Gyoza","3 pieces",180,9,18,8,"dumpling","🥟"],
+["You tiao","1 piece",220,3,25,12,"dough fritter","🥖"],
+["Chwee kueh","4 pieces",240,3,40,8,"","🍘"],
+["Chee cheong fun","1 plate",260,6,48,5,"","🍥"],
+["Soon kueh","1 piece",120,3,20,3,"","🥟"],
+["Png kueh","1 piece",150,3,28,3,"","🥟"],
+["Turnip cake (pan fried)","2 pieces",220,4,26,11,"lo bak go","🥘"],
+["Otah","1 piece",90,6,4,6,"otak","🐟"],
+["Rojak","1 plate",450,10,55,20,"","🥗"],
+["Vadai","1 piece",180,5,20,9,"","🍩"],
+["Murtabak (chicken)","1 piece",700,30,70,32,"","🥞"],
+["Roti prata (plain)","1 piece",210,5,32,7,"paratha","🥞"],
+["Roti prata (egg)","1 piece",290,9,33,13,"","🥞"],
+["Roti john","1 piece",600,25,60,28,"","🥖"],
+["Thosai","1 piece",120,3,25,1,"dosa dosai","🥞"],
+["Appam","1 piece",120,2,25,2,"","🥞"],
+["Idli","2 pieces",120,4,25,0,"","🍘"],
+["Chapati","1 piece",120,4,18,3,"","🫓"],
+["Naan (plain)","1 piece",260,9,45,5,"","🫓"],
+["Garlic naan","1 piece",320,9,48,10,"","🫓"],
+["Kaya toast","2 slices",320,6,44,13,"","🍞"],
+["Soft-boiled eggs","2 eggs",140,12,1,10,"half boiled","🥚"],
+["Pho (beef)","1 bowl",450,30,55,10,"vietnamese","🍜"],
+["Banh mi","1 roll",480,22,55,18,"vietnamese","🥖"],
+["Pad thai","1 plate",700,25,85,28,"thai","🍜"],
+["Green curry with rice","1 plate",650,25,70,30,"thai","🍛"],
+["Tom yum soup","1 bowl",200,18,12,9,"thai","🍲"],
+["Mango sticky rice","1 plate",480,6,90,12,"thai","🥭"],
+["Bibimbap","1 bowl",620,25,85,20,"korean","🍲"],
+["Tteokbokki","1 serving",450,10,85,8,"korean rice cake","🌶️"],
+["Korean fried chicken","4 pieces",520,30,35,28,"","🍗"],
+["Bulgogi with rice","1 plate",700,35,80,25,"korean","🍖"],
+["Kimchi","1 serving",25,1,4,0,"korean","🥬"],
+["Ramen (tonkotsu)","1 bowl",850,35,80,42,"japanese","🍜"],
+["Udon (soup)","1 bowl",450,15,80,6,"japanese","🍜"],
+["Chicken katsu don","1 bowl",780,35,95,28,"japanese","🍱"],
+["Salmon don","1 bowl",600,32,80,16,"japanese","🍱"],
+["Sushi (salmon nigiri)","2 pieces",130,7,18,3,"","🍣"],
+["Sushi roll (california)","6 pieces",250,7,38,7,"maki","🍣"],
+["Sashimi (salmon)","5 slices",120,15,0,6,"","🍣"],
+["Tempura (prawn)","3 pieces",210,10,15,12,"japanese","🍤"],
+["Miso soup","1 bowl",40,3,4,1,"japanese","🍲"],
+["Chicken rendang","1 serving",480,28,10,36,"malay","🍛"],
+["Beef rendang","1 serving",520,30,10,40,"malay","🍛"],
+["Ayam penyet","1 plate",750,38,70,35,"","🍗"],
+["Gado gado","1 plate",420,14,40,22,"indonesian","🥗"],
+["Butter chicken with rice","1 plate",780,35,80,34,"indian","🍛"],
+["Dhal curry","1 bowl",180,10,25,4,"indian","🍲"],
+["Tandoori chicken","2 pieces",320,40,5,15,"indian","🍗"],
+["Fish & chips","1 plate",800,32,70,44,"western","🍟"],
+["Chicken chop","1 plate",700,38,50,38,"western","🍗"],
+["Grilled chicken salad","1 bowl",380,35,15,20,"western","🥗"],
+["Aglio olio (chicken)","1 plate",560,28,62,22,"pasta","🍝"],
+["Carbonara","1 plate",750,25,70,40,"pasta","🍝"],
+["Bolognese","1 plate",620,28,75,22,"pasta","🍝"],
+["Lasagna","1 slice",520,25,45,26,"","🍝"],
+["Margherita pizza","2 slices",480,20,58,18,"","🍕"],
+["Pepperoni pizza","2 slices",560,24,58,24,"","🍕"],
+["Big Mac","1 burger",550,25,45,30,"mcdonalds mcd","🍔"],
+["McSpicy","1 burger",560,27,46,30,"mcdonalds mcd","🍔"],
+["Cheeseburger","1 burger",300,15,32,12,"","🍔"],
+["Double cheeseburger","1 burger",440,25,34,24,"","🍔"],
+["Fries (medium)","1 pack",340,4,44,16,"mcd chips","🍟"],
+["Chicken nuggets","6 pieces",260,15,16,15,"mcd mcdonalds","🍗"],
+["Fried chicken","1 piece",290,20,10,19,"kfc drumstick thigh","🍗"],
+["Chicken shawarma wrap","1 wrap",480,26,45,20,"kebab","🌯"],
+["Club sandwich","1 whole",550,28,45,28,"","🥪"],
+["Tuna sandwich","1 whole",380,22,40,14,"","🥪"],
+["Egg mayo sandwich","1 whole",400,15,38,20,"","🥪"],
+["Caesar salad","1 bowl",350,12,15,28,"","🥗"],
+["Salad (no dressing)","1 bowl",50,3,8,1,"garden","🥗"],
+["Poke bowl","1 bowl",550,32,65,18,"","🍱"],
+["Burrito","1 whole",700,30,80,28,"mexican","🌯"],
+["Tacos","2 pieces",380,18,36,18,"mexican","🌮"],
+["Chicken breast (cooked)","100 g",165,31,0,4,"grilled","🍗"],
+["Chicken thigh (cooked)","100 g",210,26,0,11,"","🍗"],
+["Salmon (cooked)","100 g",210,22,0,13,"","🐟"],
+["White fish (steamed)","100 g",110,23,0,2,"dory cod","🐟"],
+["Prawns (cooked)","100 g",100,21,1,1,"shrimp","🍤"],
+["Lean beef (cooked)","100 g",220,30,0,10,"steak","🥩"],
+["Ribeye steak","200 g",580,45,0,44,"","🥩"],
+["Pork lean (cooked)","100 g",200,27,0,10,"","🥓"],
+["Bacon","2 rashers",180,12,0,14,"","🥓"],
+["Tofu","100 g",76,8,2,5,"beancurd tau kwa","🧊"],
+["Tempeh","100 g",190,19,9,11,"","🧊"],
+["Egg","1 egg",70,6,0,5,"boiled fried","🥚"],
+["Omelette (2 eggs)","1 serving",220,14,2,17,"","🍳"],
+["Protein shake","1 scoop",120,24,3,1,"whey","🥤"],
+["Greek yogurt (plain)","100 g",60,10,4,0,"yoghurt","🥛"],
+["Milk (low-fat)","250 ml",110,9,12,3,"","🥛"],
+["Milk (full cream)","250 ml",160,8,12,9,"whole","🥛"],
+["Cheese slice","1 slice",70,4,1,5,"","🧀"],
+["Bread","1 slice",80,3,15,1,"white wholemeal","🍞"],
+["Wholemeal bread","1 slice",75,4,13,1,"","🍞"],
+["Oats","40 g dry",150,5,27,3,"oatmeal porridge","🥣"],
+["Muesli","50 g",190,5,33,4,"granola","🥣"],
+["Peanut butter","1 tbsp",95,4,3,8,"","🥜"],
+["Kaya","1 tbsp",60,0,11,2,"","🍯"],
+["Butter","1 tsp",35,0,0,4,"","🧈"],
+["Olive oil","1 tbsp",120,0,0,14,"","🫒"],
+["Mixed vegetables (stir-fried)","1 serving",80,3,8,4,"veg greens kailan chye sim","🥬"],
+["Broccoli (cooked)","100 g",35,3,7,0,"","🥦"],
+["Sambal kangkong","1 plate",180,6,12,12,"","🥬"],
+["Cereal prawn","1 plate",520,28,30,32,"zi char","🍤"],
+["Sweet potato","1 medium",130,2,30,0,"","🍠"],
+["Potato (boiled)","1 medium",130,3,30,0,"","🥔"],
+["Corn","1 cob",120,4,27,1,"","🌽"],
+["Avocado","1/2 fruit",160,2,9,15,"","🥑"],
+["Kopi","1 cup",120,2,22,3,"coffee condensed","☕"],
+["Kopi C","1 cup",100,2,15,3,"coffee evaporated","☕"],
+["Kopi O","1 cup",60,0,14,0,"black coffee sugar","☕"],
+["Kopi O kosong","1 cup",5,0,1,0,"black coffee no sugar","☕"],
+["Kopi peng","1 cup",140,2,26,3,"iced coffee","🧋"],
+["Teh","1 cup",140,2,26,3,"tea condensed","🍵"],
+["Teh C","1 cup",110,2,18,3,"","🍵"],
+["Teh O","1 cup",60,0,15,0,"","🍵"],
+["Teh tarik","1 cup",180,4,30,5,"","🍵"],
+["Green tea (no sugar)","1 cup",2,0,0,0,"","🍵"],
+["Milo","1 cup",200,5,32,5,"","🥤"],
+["Milo dinosaur","1 cup",380,8,60,10,"","🥤"],
+["Bandung","1 cup",200,4,38,4,"rose","🥤"],
+["Bubble tea (full sugar, pearls)","500 ml",340,2,72,5,"boba milk tea bbt","🧋"],
+["Bubble tea (less sugar, pearls)","500 ml",250,2,52,4,"boba milk tea bbt","🧋"],
+["Bubble tea (no sugar, no pearls)","500 ml",90,2,10,4,"boba bbt","🧋"],
+["Latte","1 cup",190,10,15,10,"coffee","☕"],
+["Cappuccino","1 cup",120,8,10,6,"coffee","☕"],
+["Americano","1 cup",10,0,2,0,"coffee black","☕"],
+["Fresh sugarcane juice","1 cup",180,0,45,0,"","🥤"],
+["Lime juice","1 cup",120,0,30,0,"","🍋"],
+["Coconut water","1 cup",60,1,14,0,"","🥥"],
+["Barley water","1 cup",110,0,27,0,"","🥤"],
+["Soya bean milk (sweetened)","1 cup",140,6,22,3,"soybean","🥛"],
+["Orange juice","1 cup",110,2,26,0,"","🍊"],
+["Coke","1 can 330 ml",140,0,35,0,"cola soft drink","🥤"],
+["Coke Zero","1 can 330 ml",1,0,0,0,"diet soft drink","🥤"],
+["Beer","1 can 330 ml",145,1,11,0,"tiger heineken","🍺"],
+["Red wine","1 glass 150 ml",125,0,4,0,"","🍷"],
+["Whisky","1 shot 45 ml",105,0,0,0,"","🥃"],
+["Water","1 glass",0,0,0,0,"plain","💧"],
+["Banana","1 medium",105,1,27,0,"","🍌"],
+["Apple","1 medium",95,0,25,0,"","🍎"],
+["Orange","1 medium",60,1,15,0,"","🍊"],
+["Papaya","1 cup",55,1,14,0,"","🥭"],
+["Watermelon","1 cup",46,1,12,0,"","🍉"],
+["Grapes","1 cup",100,1,26,0,"","🍇"],
+["Mango","1 medium",200,3,50,1,"","🥭"],
+["Pineapple","1 cup",82,1,22,0,"","🍍"],
+["Strawberries","1 cup",50,1,12,0,"","🍓"],
+["Blueberries","1 cup",85,1,21,0,"","🫐"],
+["Durian","3 seeds",200,3,28,8,"","🥥"],
+["Dragonfruit","1 medium",100,2,22,0,"","🐉"],
+["Pear","1 medium",100,1,27,0,"","🍐"],
+["Mixed nuts","30 g",180,5,6,16,"almonds cashews","🥜"],
+["Almonds","20 pieces",140,5,5,12,"","🥜"],
+["Dark chocolate","2 squares 20 g",110,1,9,8,"","🍫"],
+["Milk chocolate","1 bar 45 g",240,3,26,14,"","🍫"],
+["Potato chips","small bag 30 g",160,2,15,10,"crisps","🍟"],
+["Biscuits (digestive)","2 pieces",140,2,20,6,"","🍪"],
+["Cookie (choc chip)","1 piece",160,2,22,8,"","🍪"],
+["Ice cream","1 scoop",140,2,16,7,"","🍦"],
+["Chendol","1 bowl",380,5,60,14,"cendol","🍧"],
+["Ice kachang","1 bowl",250,3,55,2,"","🍧"],
+["Tau huay","1 bowl",130,6,20,3,"beancurd soya","🥣"],
+["Goreng pisang","1 piece",180,2,26,8,"banana fritter","🍌"],
+["Ondeh ondeh","3 pieces",190,2,35,5,"","🍡"],
+["Muah chee","1 box",280,5,45,9,"","🍡"],
+["Kueh lapis","1 slice",180,2,26,8,"","🍰"],
+["Pandan cake","1 slice",200,3,28,9,"","🍰"],
+["Swiss roll","1 slice",180,3,25,8,"","🍰"],
+["Cheesecake","1 slice",400,7,35,26,"","🍰"],
+["Chocolate cake","1 slice",350,4,50,15,"","🍰"],
+["Doughnut","1 piece",250,4,30,13,"donut","🍩"],
+["Croissant","1 piece",270,6,30,14,"","🥐"],
+["Egg tart","1 piece",190,4,22,10,"","🥧"],
+["Mooncake (lotus, 1 yolk)","1/4 piece",190,3,26,8,"","🥮"],
+["Pineapple tart","1 piece",80,1,11,4,"","🍪"],
+["Tau sar piah","1 piece",160,3,24,6,"","🥮"],
+["Popcorn (salted)","1 cup",60,1,12,1,"","🍿"],
+["Energy bar","1 bar",220,8,30,7,"protein bar","🍫"],
 ];
 /* ================= Exercise database (METs) ================= */
 /* [name, MET, keywords] — kcal = MET x kg x hours */
@@ -457,7 +600,7 @@ function streak(pid){
   while(anyLogged(pid,d)){n++;d=addDays(d,-1);}
   return n;
 }
-function allFoods(){return S.custom.concat(FOODS.map(f=>({name:f[0],serving:f[1],kcal:f[2],p:f[3],c:f[4],f:f[5],kw:f[6]})));}
+function allFoods(){return S.custom.concat(FOODS.map(f=>({name:f[0],serving:f[1],kcal:f[2],p:f[3],c:f[4],f:f[5],kw:f[6],ic:f[7]})));}
 function initials(name){
   const parts=String(name||"").trim().split(/\s+/).filter(Boolean);
   if(!parts.length)return "?";
@@ -535,7 +678,7 @@ function todayHTML(){
     '<div class="tiny muted">kcal</div>'+
     (streak(p.id)>1?'<div class="tiny" style="margin-top:6px">🔥 <b class="num">'+streak(p.id)+'</b>-day streak</div>':"")+
     '</div></div>'+
-    '<div class="eqn"><span class="bit">Budget <b class="num">'+base+'</b></span>'+
+    '<div class="eqn"><button class="bit" data-act="budget">Budget <b class="num">'+base+'</b>'+(p.override?' ✏️':'')+'</button>'+
       (burn?'<span class="bit">+ Exercise <b class="num" style="color:var(--burn)">'+r0(burn)+'</b></span>':"")+
       '<span class="bit">− Eaten <b class="num">'+r0(eaten)+'</b></span></div>'+
     '<div class="macros">'+macroHTML("Protein",P,tP)+macroHTML("Carbs",C,tC)+macroHTML("Fat",F,tF)+'</div></section>';
@@ -555,7 +698,7 @@ function todayHTML(){
       (list.length>1?'<button class="sv" data-act="savemeal" data-meal="'+m+'">save as meal</button>':"")+
       '<span class="tiny muted num">'+(sub?r0(sub)+" kcal":"")+'</span></div>';
     for(const e of list){
-      html+='<button class="entry" data-act="edit" data-id="'+e.id+'"><span class="grow"><span style="font-weight:600">'+esc(e.name)+'</span><br><span class="tiny muted num">'+(e.qty!==1?e.qty+" × ":"")+esc(e.serving||"serving")+'</span></span><span class="kc num">'+r0(e.kcal*e.qty)+'</span></button>';
+      html+='<button class="entry" data-act="edit" data-id="'+e.id+'"><span class="eic">'+(e.ic||"🍽️")+'</span><span class="grow"><span style="font-weight:600">'+esc(e.name)+'</span><br><span class="tiny muted num">'+(e.qty!==1?e.qty+" × ":"")+esc(e.serving||"serving")+'</span></span><span class="kc num">'+r0(e.kcal*e.qty)+'</span></button>';
     }
     html+='<button class="addline" data-act="add" data-meal="'+m+'">+ Add food</button></div>';
   }
@@ -563,7 +706,7 @@ function todayHTML(){
   const xs=exEntries(p.id,S.date);
   html+='<div class="meal"><div class="mealhead"><span class="label">Exercise</span><span class="tiny muted num">'+(burn?"+"+r0(burn)+" kcal":"")+'</span></div>';
   for(const e of xs){
-    html+='<button class="entry ex" data-act="editex" data-id="'+e.id+'"><span class="grow"><span style="font-weight:600">'+esc(e.name)+'</span><br><span class="tiny muted num">'+e.mins+' min</span></span><span class="kc num">+'+r0(e.kcal)+'</span></button>';
+    html+='<button class="entry ex" data-act="editex" data-id="'+e.id+'"><span class="eic">💪</span><span class="grow"><span style="font-weight:600">'+esc(e.name)+'</span><br><span class="tiny muted num">'+e.mins+' min</span></span><span class="kc num">+'+r0(e.kcal)+'</span></button>';
   }
   html+='<button class="addline" data-act="addex">+ Add exercise</button></div>';
   if(!es.length && entries(p.id,addDays(S.date,-1)).length){
@@ -661,7 +804,7 @@ function isFav(name){return S.favs[S.active].indexOf(name)>=0;}
 function foodRowHTML(f){
   const fav=isFav(f.name);
   return '<div class="foodrow">'+
-    '<button class="fmain" data-food="'+esc(f.name)+'"><span class="grow"><span class="fname">'+esc(f.name)+'</span><br><span class="fsub num">'+esc(f.serving)+' · P'+f.p+' C'+f.c+' F'+f.f+'</span></span><b class="num">'+f.kcal+'</b></button>'+
+    '<button class="fmain" data-food="'+esc(f.name)+'"><span class="fic">'+(f.ic||"🍽️")+'</span><span class="grow"><span class="fname">'+esc(f.name)+'</span><br><span class="fsub num">'+esc(f.serving)+' · P'+f.p+' C'+f.c+' F'+f.f+'</span></span><b class="num">'+f.kcal+'</b></button>'+
     '<button class="star'+(fav?' on':'')+'" data-star="'+esc(f.name)+'" aria-label="'+(fav?'Remove from favourites':'Add to favourites')+'">'+(fav?'★':'☆')+'</button>'+
   '</div>';
 }
@@ -735,7 +878,7 @@ function openEdit(id){
 }
 function addEntry(f,qty,meal){
   const day=S.logs[S.active][S.date]||(S.logs[S.active][S.date]=[]);
-  day.push({id:uid(),meal:meal,name:f.name,serving:f.serving,kcal:f.kcal,p:f.p||0,c:f.c||0,f:f.f||0,qty:qty,ts:Date.now()});
+  day.push({id:uid(),meal:meal,name:f.name,serving:f.serving,kcal:f.kcal,p:f.p||0,c:f.c||0,f:f.f||0,ic:f.ic||'🍽️',qty:qty,ts:Date.now()});
   const rec=S.recents[S.active].filter(n=>n!==f.name);rec.unshift(f.name);S.recents[S.active]=rec.slice(0,15);
   persist();
 }
@@ -1081,6 +1224,7 @@ function settingsHTML(){
   const me=meProf(), them=themProf();
   html+='<section class="card"><div class="row" style="margin-bottom:12px">'+avatarHTML(me,44)+
     '<span class="grow"><b>'+esc(me.name)+'</b> <span class="tiny muted">(you)</span><br><span class="tiny muted num">budget '+baseBudget(me)+' kcal'+(me.goalWeight?' · goal '+me.goalWeight+' kg':"")+'</span></span></div>'+
+    '<div class="row" style="margin-bottom:8px"><button class="btn small grow" data-act="budget">Change budget</button></div>'+
     '<div class="row"><button class="btn small grow" data-act="editprof" data-pid="'+me.id+'">Edit name &amp; goal</button>'+
     '<button class="btn small grow" data-act="photo" data-pid="'+me.id+'">'+(me.photo?"Change photo":"Add photo")+'</button>'+
     (me.photo?'<button class="btn small danger" data-act="rmphoto" data-pid="'+me.id+'">Remove</button>':"")+'</div></section>';
@@ -1141,6 +1285,27 @@ function settingsHTML(){
    '<p class="tiny muted" style="margin:0">Food and exercise values are typical estimates — treat them as a guide, not gospel. Budgets use the Mifflin-St Jeor formula; exercise is estimated from your weight and activity intensity. If you log workouts here, pick a lower activity level so the same effort is not counted twice. Not medical advice.</p>'+
    '<button class="btn danger small" style="margin-top:12px" data-act="reset">Erase all data</button></section>';
   return html;
+}
+function budgetSheet(){
+  const p=meProf(), auto=(function(){const o=p.override;p.override=null;const v=baseBudget(p);p.override=o;return v;})();
+  openSheet('<h3>Daily budget</h3>'+
+    '<p class="tiny muted" style="margin-top:-6px">We work this out from your details and goal. Set your own number if you would rather.</p>'+
+    '<div class="card" style="margin:12px 0"><div class="row" style="justify-content:space-between">'+
+      '<span class="tiny">Worked out for you</span><b class="num" style="font-size:19px">'+auto+' kcal</b></div></div>'+
+    '<div class="frow"><div><div class="flabel">Your own number (leave blank to use ours)</div>'+
+      '<input id="bOv" type="number" inputmode="numeric" value="'+(p.override||"")+'" placeholder="'+auto+'"></div></div>'+
+    '<div id="bWarn"></div>'+
+    '<div class="row"><button class="btn grow" id="bAuto">Use ours</button>'+
+    '<button class="btn primary grow" id="bSave">Save</button></div>');
+  $("#bAuto").onclick=()=>{p.override=null;persist();closeSheet();render();};
+  $("#bSave").onclick=()=>{
+    const v=parseInt($("#bOv").value);
+    if($("#bOv").value.trim()===""){p.override=null;persist();closeSheet();render();return;}
+    if(!(v>=800&&v<=6000)){$("#bWarn").innerHTML='<p class="tiny" style="color:var(--over);margin:0 0 10px">Pick something between 800 and 6000 kcal.</p>';return;}
+    if(v<1200){$("#bWarn").innerHTML='<p class="tiny" style="color:var(--over);margin:0 0 10px">Under 1200 kcal a day is very low — tap Save again if you mean it.</p>';
+      if(!$("#bSave").dataset.warned){$("#bSave").dataset.warned="1";return;}}
+    p.override=v;persist();closeSheet();render();
+  };
 }
 function editProfSheet(pid){
   const p=S.profiles[pid];
@@ -1348,7 +1513,7 @@ function setupPartnerHTML(){
     '<h3 style="margin-bottom:4px">Who are you doing this with?</h3>'+
     '<p class="tiny muted" style="margin:0 0 14px">Just their name for now. They add their own details when they join on their phone.</p>'+
     '<section class="card"><div class="frow"><div><div class="flabel">Their name</div>'+
-      '<input id="pName" value="'+esc(t.name||"")+'" placeholder="e.g. Michelle"></div></div></section>'+
+      '<input id="pName" value="'+esc(t.name||"")+'" placeholder=""></div></div></section>'+
     '<button class="btn primary" style="width:100%;margin-bottom:30px" data-s="partnerNext">Continue</button>',
     "you");
 }
@@ -1374,13 +1539,15 @@ function setupDoneHTML(){
       '<p class="tiny muted" style="margin:0 0 18px">Day 1 of your journey'+(them.name?' with '+esc(them.name):"")+'.</p></div>'+
     '<section class="card"><div class="row" style="justify-content:space-between">'+
       '<span class="tiny">Your daily budget</span><b class="num" style="font-size:20px">'+baseBudget(me)+' kcal</b></div>'+
-      '<p class="tiny muted" style="margin:8px 0 0">Worked out from your details and goal. It shifts as your weight does, and exercise adds to it.</p></section>'+
+      '<p class="tiny muted" style="margin:8px 0 10px">Worked out from your details and goal. It shifts as your weight does, and exercise adds to it.</p>'+
+      '<button class="btn small" data-s="budget">Change it</button></section>'+
     (S.paired
       ? '<section class="card"><div class="row">'+avatarHTML(them,34)+'<span class="grow tiny"><b>'+esc(them.name)+'</b> is connected.<br><span class="muted">You\u2019ll see each other in the Journey tab.</span></span></div></section>'
       : '<section class="card"><div class="label" style="margin-bottom:8px">Next: bring '+esc(them.name||"your partner")+' in</div>'+
         '<p class="tiny muted" style="margin:0 0 10px">Send an invite so you can see each other\u2019s progress. You can also do this later from Settings.</p>'+
         '<button class="btn small primary" data-s="invite">Send invite</button></section>')+
-    '<button class="btn primary" style="width:100%;margin-bottom:30px" data-s="finish">Start tracking</button>');
+    '<button class="btn primary" style="width:100%" data-s="finish">Start tracking</button>'+
+    '<button class="btn" style="width:100%;margin:10px 0 30px" data-s="'+(S.paired?"you":"partner")+'">‹ Back</button>');
 }
 function applyInvite(raw){
   let obj;
@@ -1409,7 +1576,11 @@ function bindSetup(){
   document.querySelectorAll("[data-s]").forEach(el=>{
     el.onclick=()=>{
       const a=el.dataset.s;
-      if(a==="welcome"||a==="you"){S.setupStep=a;render();}
+      if(a==="welcome"||a==="you"||a==="partner"){
+        if($("#me_name"))readProfForm("me_",meProf());
+        if($("#pName")&&$("#pName").value.trim())themProf().name=$("#pName").value.trim();
+        S.setupStep=a;persist();render();
+      }
       else if(a==="start"){S.me="a";S.active="a";S.setupStep="you";render();}
       else if(a==="join"){S.setupStep="join";render();}
       else if(a==="joinSkip"){S.me="b";S.active="b";S.setupStep="you";render();}
@@ -1432,6 +1603,7 @@ function bindSetup(){
         S.journey.start=todayStr();S.setupStep="done";persist();render();
       }
       else if(a==="invite"){openInvite();}
+      else if(a==="budget"){budgetSheet();}
       else if(a==="finish"){
         S.setup=true;S.active=S.me;
         S.journey.start=S.journey.start||todayStr();
@@ -1485,6 +1657,7 @@ function bindMain(){
         S.weights[S.active]=ws; prof().weight=v; persist();render();
       }
       else if(a==="editprof"){editProfSheet(pid);}
+      else if(a==="budget"){budgetSheet();}
       else if(a==="invite"){openInvite();}
       else if(a==="photo"){pickPhoto(pid);}
       else if(a==="rmphoto"){S.profiles[pid].photo=null;persist();render();}
@@ -1552,7 +1725,7 @@ function bindSheetBody(){
       const k=+$("#fK").value;
       if(!(k>0)){alert("Enter how many calories.");return;}
       const label=$("#fN").value.trim();
-      const f={name:label||("Quick add "+r0(k)+" kcal"),serving:"1 serving",kcal:r0(k),p:0,c:0,f:0,kw:"quick"};
+      const f={name:label||("Quick add "+r0(k)+" kcal"),serving:"1 serving",kcal:r0(k),p:0,c:0,f:0,kw:"quick",ic:"⚡"};
       if(!S.custom.some(x=>x.name===f.name))S.custom.unshift(f);
       addEntry(f,1,sheetMeal);
       closeSheet();render();
@@ -1562,7 +1735,7 @@ function bindSheetBody(){
     $("#cSave").onclick=()=>{
       const name=$("#cName").value.trim(),k=+$("#cK").value;
       if(!name||!(k>0)){alert("Give it a name and calories.");return;}
-      const f={name:name,serving:$("#cServ").value.trim()||"1 serving",kcal:r0(k),p:+$("#cP").value||0,c:+$("#cC").value||0,f:+$("#cF").value||0,kw:""};
+      const f={name:name,serving:$("#cServ").value.trim()||"1 serving",kcal:r0(k),p:+$("#cP").value||0,c:+$("#cC").value||0,f:+$("#cF").value||0,kw:"",ic:"🍽️"};
       if(!S.custom.some(x=>x.name===f.name))S.custom.unshift(f);
       addEntry(f,1,sheetMeal);closeSheet();render();
     };

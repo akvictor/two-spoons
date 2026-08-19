@@ -25,9 +25,12 @@ Inspired by the parts of LoseIt! and Cal AI that actually get used day to day.
   kopi c` parses quantities and matches each item), quick-add when you just know the
   number, and custom foods you define once and reuse.
 - **Saved meals.** Bundle a meal you eat often into one entry and re-add it in a tap.
-- **~115-item food database** weighted toward Singapore hawker food (chicken rice, char
-  kway teow, laksa, cai fan, the full kopi/teh matrix) plus everyday staples, and a
-  28-activity exercise database.
+- **237-item food database**, every entry with its own icon — heavy on Singapore hawker
+  food (chicken rice, char kway teow, laksa, cai fan, kway chap, the full kopi/teh matrix)
+  plus Japanese, Korean, Thai, Indian, Malay and Western staples, and a 28-activity
+  exercise database.
+- **Your budget, your call.** The calculated figure is a starting point; override it with
+  your own number any time from Today, Settings, or the welcome screen.
 - **Insights** — 7-day averages, days on target, and a projected weekly weight change with
   an estimated date for reaching your goal weight.
 - **Shared view** — both people's numbers, streaks, weekly chart and weight trends together.
