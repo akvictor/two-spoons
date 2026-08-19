@@ -34,8 +34,12 @@ Inspired by the parts of LoseIt! and Cal AI that actually get used day to day.
   exercise database.
 - **Your budget, your call.** The calculated figure is a starting point; override it with
   your own number any time from Today, Settings, or the welcome screen.
-- **Insights** — 7-day averages, days on target, and a projected weekly weight change with
-  an estimated date for reaching your goal weight.
+- **Insights** — switch between a week and a month view for averages, a projected weekly
+  weight change, and an estimated date for reaching your goal weight.
+- **Consistency at a glance** — one square per day (on target / over / not logged) with the
+  percentage logged, the percentage on target, and your best run. The Journey tab shows
+  both people's grids together, so "how are we doing?" is one look rather than arithmetic.
+  Days before the journey began are marked separately so they don't count as misses.
 - **Shared view** — both people's numbers, streaks, weekly chart and weight trends together.
 
 ## Garmin

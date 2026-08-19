@@ -24,6 +24,8 @@
   --p1:#3565C0; --p1-soft:#E5EDFB; --p2:#C06722; --p2-soft:#F9EDE1;
   --good:#2E7D4F; --good-soft:#E3F1E8; --over:#C03A2E; --over-soft:#F9E6E4;
   --burn:#7A5AA8; --burn-soft:#EFE8F7; --water:#2E7B93; --water-soft:#E1F0F4;
+  /* macros — validated as a categorical trio on every surface */
+  --pro:#0D9488; --carb:#CA8A04; --fat:#7E22CE;
   /* surfaces — sticker, light */
   --bg:#FFF6E9; --card:#FFFFFF; --ink:#2B2622; --ink2:#6B675E; --ink3:#9C968C;
   --line:#2B2622; --line2:#F3EADC; --edge:#E3D6C2; --ring-track:#F0E4D2;
@@ -65,6 +67,7 @@
     --p1:#5B87DF; --p1-soft:#233046; --p2:#CE7429; --p2-soft:#3A2C1C;
     --good:#5CB884; --good-soft:#1F3529; --over:#E06B5F; --over-soft:#3E2523;
     --burn:#A98CD8; --burn-soft:#2B2440; --water:#5FAFC4; --water-soft:#1B3138;
+    --pro:#149C8A; --carb:#B58510; --fat:#8F5FD0;
     --sheet-scrim:rgba(0,0,0,.6);
   }
   :root[data-style="clean"]:not([data-theme="light"]){
@@ -86,6 +89,7 @@
   --p1:#5B87DF; --p1-soft:#233046; --p2:#CE7429; --p2-soft:#3A2C1C;
   --good:#5CB884; --good-soft:#1F3529; --over:#E06B5F; --over-soft:#3E2523;
   --burn:#A98CD8; --burn-soft:#2B2440; --water:#5FAFC4; --water-soft:#1B3138;
+  --pro:#149C8A; --carb:#B58510; --fat:#8F5FD0;
   --sheet-scrim:rgba(0,0,0,.6);
 }
 :root[data-theme="dark"][data-style="clean"]{
@@ -162,7 +166,9 @@ h1,h3{font-weight:var(--wt-h)}
 .macros{display:flex;gap:10px;margin-top:14px}
 .macro{flex:1}
 .macro .bar{height:9px;border-radius:5px;background:var(--ring-track);overflow:hidden;margin-top:5px;border:var(--bw-s) solid var(--line)}
-.macro .bar i{display:block;height:100%;background:var(--p1)}
+.macro .bar i{display:block;height:100%;background:var(--mc)}
+.macro.pro{--mc:var(--pro)} .macro.carb{--mc:var(--carb)} .macro.fat{--mc:var(--fat)}
+.macro .dot{width:8px;height:8px;border-radius:50%;display:inline-block;background:var(--mc);margin-right:5px;vertical-align:1px}
 .macro .bar i.full{background:var(--good)}
 /* meals + entries */
 .meal{margin-bottom:14px}
@@ -223,7 +229,7 @@ h1,h3{font-weight:var(--wt-h)}
 .uscard .nm{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* stats */
 .stats{display:flex;gap:10px;flex-wrap:wrap}
-.stat{flex:1;min-width:88px}
+.stat{flex:1;min-width:64px}
 .stat .v{font-size:21px;font-weight:var(--wt-h);letter-spacing:-.01em}
 .stat .k{font-size:11.5px;color:var(--ink2)}
 /* forms */
@@ -239,6 +245,13 @@ details.dtable{margin-top:8px} details.dtable summary{font-size:12.5px;color:var
 table.data{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
 table.data td,table.data th{padding:4px 6px;border-bottom:1px solid var(--line2);text-align:right}
 table.data,.num,.fname,.fsub{-webkit-user-select:text;user-select:text}
+.dots{display:flex;gap:4px;flex-wrap:wrap}
+.dots .dot{width:14px;height:14px;border-radius:4px;flex:none}
+.dot.on{background:var(--good)}
+.dot.over{background:var(--over-soft);border:2px solid var(--over)}
+.dot.none{background:transparent;border:2px solid var(--edge)}
+.dot.pre{background:transparent;border:2px dotted var(--line2)}
+.legend .li .dot{width:11px;height:11px;border-radius:3px;margin-right:5px}
 .swatches{display:flex;gap:8px;flex-wrap:wrap}
 .sw-btn{flex:1;min-width:70px;border:var(--bw) solid var(--line);border-radius:var(--rad-s);
   padding:9px 6px 8px;background:var(--card);box-shadow:var(--shadow-s);text-align:center;font-size:11.5px;font-weight:var(--wt)}
@@ -630,7 +643,7 @@ function modePickerHTML(){
 }
 function blank(){
   return {v:3,setup:false,setupStep:"welcome",me:"a",paired:false,journey:{start:null},
-    style:"sticker",mode:"auto",
+    style:"sticker",mode:"auto",period:7,
     active:"a",tab:"today",date:todayStr(),
     profiles:{a:newProfile("a","male",172,70), b:newProfile("b","female",160,55)},
     logs:{a:{},b:{}}, ex:{a:{},b:{}}, water:{a:{},b:{}},
@@ -652,7 +665,7 @@ function migrate(st){
   if(st.paired===undefined)st.paired=!!(st.setup&&st.profiles&&st.profiles.b&&st.profiles.b.name);
   st.active=st.me;
   st.date=st.date||todayStr();
-  st.style=st.style||"sticker"; st.mode=st.mode||"auto";
+  st.style=st.style||"sticker"; st.mode=st.mode||"auto"; st.period=st.period||7;
   st.setupStep=st.setupStep||(st.setup?"done":"welcome");
   for(const k of ["logs","ex","water","weights","recents","favs"]){
     st[k]=st[k]||{}; st[k].a=st[k].a||base[k].a; st[k].b=st[k].b||base[k].b;
@@ -782,7 +795,7 @@ function todayHTML(){
     '<div class="eqn"><button class="bit" data-act="budget">Budget <b class="num">'+base+'</b>'+(p.override?' ✏️':'')+'</button>'+
       (burn?'<span class="bit">+ Exercise <b class="num" style="color:var(--burn)">'+r0(burn)+'</b></span>':"")+
       '<span class="bit">− Eaten <b class="num">'+r0(eaten)+'</b></span></div>'+
-    '<div class="macros">'+macroHTML("Protein",P,tP)+macroHTML("Carbs",C,tC)+macroHTML("Fat",F,tF)+'</div></section>';
+    '<div class="macros">'+macroHTML("Protein",P,tP,"pro")+macroHTML("Carbs",C,tC,"carb")+macroHTML("Fat",F,tF,"fat")+'</div></section>';
   /* water */
   const w=dayWater(p.id,S.date), wt=p.waterTarget||8;
   html+='<section class="card"><div class="row" style="justify-content:space-between"><span class="label">Water</span>'+
@@ -815,8 +828,8 @@ function todayHTML(){
   }
   return html;
 }
-function macroHTML(name,v,t){
-  return '<div class="macro"><div class="tiny"><b>'+name+'</b></div>'+
+function macroHTML(name,v,t,cls){
+  return '<div class="macro '+cls+'"><div class="tiny"><span class="dot"></span><b>'+name+'</b></div>'+
     '<div class="tiny muted num" style="white-space:nowrap">'+r0(v)+' / '+t+'g</div>'+
     '<div class="bar"><i class="'+(v>=t?"full":"")+'" style="width:'+Math.min(100,t?v/t*100:0)+'%"></i></div></div>';
 }
@@ -1181,17 +1194,18 @@ function weekStats(pid,n){
           onTarget:onTarget,dailyDeficit:dailyDeficit,weeklyKg:dailyDeficit*7/KCAL_PER_KG};
 }
 function trendsHTML(){
-  const p=prof(), col=colorOf(p.id);
-  const days=[];for(let i=13;i>=0;i--)days.push(addDays(todayStr(),-i));
+  const p=prof(), col=colorOf(p.id), N=S.period||7;
+  const days=periodDays(N);
   const vals=days.map(d=>dayKcal(p.id,d));
-  const st=weekStats(p.id,7);
+  const st=weekStats(p.id,N);
   const ws=S.weights[p.id].slice(-60);
-  let html='<section class="card"><div class="label" style="margin-bottom:10px">Last 7 days</div><div class="stats">'+
+  let html=periodPickerHTML()+
+    '<section class="card"><div class="label" style="margin-bottom:10px">Last '+N+' days</div><div class="stats">'+
     '<div class="stat"><div class="v num">'+r0(st.avgIn)+'</div><div class="k">avg eaten</div></div>'+
     '<div class="stat"><div class="v num" style="color:var(--burn)">'+r0(st.avgBurn)+'</div><div class="k">avg burned</div></div>'+
-    '<div class="stat"><div class="v num">'+st.onTarget+'/'+st.logged+'</div><div class="k">days on target</div></div>'+
     '<div class="stat"><div class="v num">🔥'+streak(p.id)+'</div><div class="k">streak</div></div>'+
-    '</div>';
+    '</div>'+
+    '<div style="margin-top:14px">'+consistencyCardHTML(p.id,N)+'</div>';
   if(st.logged>=3){
     const kg=st.weeklyKg;
     const dir=kg>0.02?"losing":kg<-0.02?"gaining":"holding steady";
@@ -1212,7 +1226,7 @@ function trendsHTML(){
     html+='<p class="tiny muted" style="margin:12px 0 0">Log a few more days and a projection will appear here.</p>';
   }
   html+='</section>';
-  html+='<section class="card"><div class="label" style="margin-bottom:8px">Last 14 days · '+esc(p.name)+'</div>'+
+  html+='<section class="card"><div class="label" style="margin-bottom:8px">Last '+N+' days · '+esc(p.name)+'</div>'+
     barChart(days,[{color:col,vals:vals}],st.base)+
     '<details class="dtable"><summary>View as table</summary><table class="data"><tr><th>Day</th><th>Eaten</th><th>Burned</th></tr>'+
     days.map((d,i)=>'<tr><td>'+niceDate(d)+'</td><td class="num">'+r0(vals[i])+'</td><td class="num">'+r0(dayBurn(p.id,d))+'</td></tr>').join("")+'</table></details></section>';
@@ -1259,7 +1273,17 @@ function usHTML(){
   const bothUnder=anyLogged("a",todayStr())&&anyLogged("b",todayStr())&&
     dayKcal("a",todayStr())<=dayBudget("a",todayStr())&&dayKcal("b",todayStr())<=dayBudget("b",todayStr());
   if(bothUnder)html+='<p class="tiny" style="text-align:center;margin:10px 0;color:var(--good);font-weight:600">Both under budget today 🎉</p>';
-  html+='<section class="card" style="margin-top:14px"><div class="label" style="margin-bottom:4px">This week</div>'+
+  html+='<section class="card" style="margin-top:14px"><div class="label" style="margin-bottom:10px">How consistent are we?</div>'+
+    periodPickerHTML();
+  for(const p of [me,them]){
+    const c=consistency(p.id,S.period||7);
+    html+='<div class="row" style="margin:2px 0 6px">'+avatarHTML(p,24)+
+      '<span class="grow tiny"><b>'+esc(p.name)+'</b>'+(p.id===S.me?' <span class="muted">(you)</span>':"")+'</span>'+
+      '<span class="tiny muted num">'+c.loggedPct+'% · '+c.onPct+'% on target</span></div>'+
+      dotGridHTML(p.id,S.period||7)+'<div style="height:12px"></div>';
+  }
+  html+=dotLegendHTML()+'</section>';
+  html+='<section class="card"><div class="label" style="margin-bottom:4px">This week</div>'+
    '<div class="legend"><span class="li"><span class="sw" style="background:var(--p1)"></span>'+esc(S.profiles.a.name)+'</span>'+
    '<span class="li"><span class="sw" style="background:var(--p2)"></span>'+esc(S.profiles.b.name)+'</span></div>'+
    barChart(days,[{color:"var(--p1)",vals:days.map(d=>dayKcal("a",d))},{color:"var(--p2)",vals:days.map(d=>dayKcal("b",d))}],0)+
@@ -1280,6 +1304,72 @@ function usHTML(){
   html+='<button class="btn" style="width:100%" data-act="import">Sync with '+esc(them.name||"partner")+'</button>'+
         '<p class="tiny muted" style="text-align:center;margin:10px 0 4px">Swap codes now and then to keep both phones up to date.</p>';
   return html;
+}
+/* ================= consistency =================
+   One square per day: filled = logged and within budget, hollow-warm = logged
+   but over, empty = nothing logged. Answers "are we actually keeping this up?"
+   at a glance, with the numbers underneath for the detail. */
+function dayStatus(pid,d){
+  if(!anyLogged(pid,d))return "none";
+  return dayKcal(pid,d)<=dayBudget(pid,d)?"on":"over";
+}
+function periodDays(n){
+  const out=[];for(let i=n-1;i>=0;i--)out.push(addDays(todayStr(),-i));return out;
+}
+function consistency(pid,n){
+  const days=periodDays(n), start=(S.journey&&S.journey.start)||days[0];
+  /* days before the journey began aren't misses */
+  const live=days.filter(d=>d>=start);
+  let logged=0,on=0,best=0,run=0,eaten=[],burned=[];
+  for(const d of live){
+    const st=dayStatus(pid,d);
+    if(st==="none"){run=0;continue;}
+    logged++; eaten.push(dayKcal(pid,d)); burned.push(dayBurn(pid,d));
+    if(st==="on"){on++;run++;best=Math.max(best,run);}else run=0;
+  }
+  const mean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
+  return {days:live,total:live.length,logged:logged,on:on,best:best,
+    loggedPct:live.length?Math.round(logged/live.length*100):0,
+    onPct:logged?Math.round(on/logged*100):0,
+    avgIn:mean(eaten),avgBurn:mean(burned),streak:streak(pid)};
+}
+function dotGridHTML(pid,n){
+  const days=periodDays(n), start=(S.journey&&S.journey.start)||days[0];
+  return '<div class="dots">'+days.map(d=>{
+    if(d<start)return '<i class="dot pre" title="'+niceDate(d)+' · before you started"></i>';
+    const st=dayStatus(pid,d);
+    const label={on:"on target",over:"over budget",none:"nothing logged"}[st];
+    return '<i class="dot '+st+'" title="'+niceDate(d)+' · '+label+'"></i>';
+  }).join("")+'</div>';
+}
+function dotLegendHTML(){
+  return '<div class="legend" style="margin-top:8px">'+
+    '<span class="li"><i class="dot on"></i>On target</span>'+
+    '<span class="li"><i class="dot over"></i>Over</span>'+
+    '<span class="li"><i class="dot none"></i>Not logged</span></div>';
+}
+function periodPickerHTML(){
+  return '<div class="modeseg" style="margin-bottom:12px">'+
+    [[7,"Week"],[30,"Month"]].map(x=>
+      '<button data-period="'+x[0]+'" class="'+(S.period===x[0]?"on":"")+'">'+x[1]+'</button>').join("")+
+    '</div>';
+}
+function consistencyCardHTML(pid,n){
+  const c=consistency(pid,n);
+  if(!c.total)return "";
+  return '<div class="stats" style="margin-bottom:10px">'+
+      '<div class="stat"><div class="v num">'+c.loggedPct+'%</div><div class="k">days logged</div></div>'+
+      '<div class="stat"><div class="v num">'+c.onPct+'%</div><div class="k">hit target</div></div>'+
+      '<div class="stat"><div class="v num">'+c.best+'</div><div class="k">best run</div></div>'+
+    '</div>'+dotGridHTML(pid,n)+dotLegendHTML()+
+    '<details class="dtable"><summary>View as table</summary><table class="data">'+
+      '<tr><th>Day</th><th>Eaten</th><th>Budget</th><th>Result</th></tr>'+
+      c.days.slice().reverse().map(d=>{
+        const st=dayStatus(pid,d);
+        return '<tr><td>'+niceDate(d)+'</td><td class="num">'+(st==="none"?"—":r0(dayKcal(pid,d)))+
+          '</td><td class="num">'+(st==="none"?"—":r0(dayBudget(pid,d)))+'</td><td>'+
+          ({on:"On target",over:"Over",none:"Not logged"}[st])+'</td></tr>';
+      }).join("")+'</table></details>';
 }
 /* ================= the journey ================= */
 function partnerOf(pid){return pid==="a"?"b":"a";}
@@ -1804,6 +1894,9 @@ function bindMain(){
   });
   document.querySelectorAll("button[data-mode]").forEach(b=>b.onclick=()=>{
     S.mode=b.dataset.mode;persist();render();
+  });
+  document.querySelectorAll("button[data-period]").forEach(b=>b.onclick=()=>{
+    S.period=+b.dataset.period;persist();render();
   });
   const tip=$("#tip");
   document.querySelectorAll("[data-tip]").forEach(el=>{
