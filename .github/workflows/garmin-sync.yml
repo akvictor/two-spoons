@@ -2,7 +2,7 @@ name: Garmin sync
 
 on:
   schedule:
-    - cron: "17 */3 * * *"      # every 3 hours; GitHub may run it a little late
+    - cron: "*/30 * * * *"      # every 30 min; GitHub often runs a few min late
   workflow_dispatch:             # and a "Run workflow" button for on-demand syncs
 
 concurrency:

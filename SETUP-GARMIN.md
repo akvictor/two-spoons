@@ -1,6 +1,6 @@
 # Automatic Garmin sync
 
-A scheduled job logs in to Garmin every three hours, writes your recent activities
+A scheduled job logs in to Garmin every 30 minutes, writes your recent activities
 to `garmin.json` in this repository, and the app reads that file when you open it.
 No server to run and nothing to pay for.
 
@@ -65,7 +65,7 @@ The app asks for it once per phone, under **Settings → Garmin**, and remembers
 
 Go to the **Actions** tab, pick **Garmin sync**, and hit **Run workflow**. It should
 finish in under a minute and commit a `garmin.json`. After that it runs by itself
-every three hours, and opening the app pulls in whatever is new.
+every 30 minutes, and opening the app pulls in whatever is new.
 
 ---
 

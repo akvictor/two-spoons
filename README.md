@@ -35,7 +35,7 @@ Garmin Connect on a computer exports your activities as CSV (**Activities → Al
 calories. Re-importing the same file is safe — entries are keyed by their contents, so
 nothing is duplicated.
 
-For hands-off syncing, a scheduled GitHub Action logs in to Garmin every three hours
+For hands-off syncing, a scheduled GitHub Action logs in to Garmin every 30 minutes
 and commits your recent activities as `garmin.json`; the app reads it on open and
 merges anything new. Because this repository is public the file is encrypted with a
 passphrase you choose, so only your two phones can read it. Setup is in
