@@ -1,4 +1,5 @@
 <title>Two Spoons</title>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -105,13 +106,17 @@ h1,h2,h3{margin:0;text-wrap:balance}
 .tabs .ic{font-size:20px;line-height:1}
 /* sheet */
 .scrim{position:fixed;inset:0;background:var(--sheet-scrim);z-index:40;display:flex;align-items:flex-end;justify-content:center}
-.sheet{background:var(--bg);width:100%;max-width:520px;max-height:88vh;border-radius:20px 20px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));overflow-y:auto}
-.sheet h3{font-size:18px;margin-bottom:12px}
+.sheet{position:relative;background:var(--bg);width:100%;max-width:520px;max-height:88vh;border-radius:20px 20px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));overflow-y:auto}
+.sheet h3{font-size:18px;margin-bottom:12px;padding-right:42px}
+.xclose{position:absolute;top:10px;right:12px;width:34px;height:34px;border-radius:50%;background:var(--line2);color:var(--ink2);font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;z-index:2}
 .grab{width:36px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 12px}
 .seg{display:flex;background:var(--line2);border-radius:11px;padding:3px;margin-bottom:12px}
 .seg button{flex:1;padding:7px 4px;border-radius:8px;font-size:13px;font-weight:600;color:var(--ink2)}
 .seg button.on{background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
-.foodrow{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px 4px;border-bottom:1px solid var(--line2)}
+.foodrow{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:10px 4px;border-bottom:1px solid var(--line2)}
+.fmain{display:flex;align-items:center;gap:10px;flex:1;min-width:0;text-align:left;padding:0}
+.star{width:38px;height:38px;flex:none;border-radius:50%;font-size:18px;color:var(--ink3);display:flex;align-items:center;justify-content:center}
+.star.on{color:#E0A32E}
 .foodrow .fname{font-weight:600}
 .foodrow .fsub{font-size:12.5px;color:var(--ink2)}
 .stepper{display:flex;align-items:center;border:1px solid var(--line);border-radius:12px;overflow:hidden}
@@ -376,14 +381,14 @@ function blank(){
   return {v:2,setup:false,active:"a",tab:"today",date:todayStr(),
     profiles:{a:newProfile("a","male",172,70), b:newProfile("b","female",160,55)},
     logs:{a:{},b:{}}, ex:{a:{},b:{}}, water:{a:{},b:{}},
-    weights:{a:[],b:[]}, custom:[], savedMeals:[], recents:{a:[],b:[]}};
+    weights:{a:[],b:[]}, custom:[], savedMeals:[], recents:{a:[],b:[]}, favs:{a:[],b:[]}};
 }
 let S=blank();
 /* fills in anything a older save (or a partial import) is missing */
 function migrate(st){
   const base=blank();
   st.v=2;
-  for(const k of ["logs","ex","water","weights","recents"]){
+  for(const k of ["logs","ex","water","weights","recents","favs"]){
     st[k]=st[k]||{}; st[k].a=st[k].a||base[k].a; st[k].b=st[k].b||base[k].b;
   }
   st.custom=st.custom||[]; st.savedMeals=st.savedMeals||[];
@@ -553,14 +558,20 @@ function openAdd(meal){
   openSheet(addSheetHTML()); bindAddSheet();
 }
 function guessMeal(){const h=new Date().getHours();return h<10.5?"Breakfast":h<15?"Lunch":h<21?"Dinner":"Snacks";}
+function sheetChrome(){return '<div class="grab"></div><button class="xclose" data-xclose aria-label="Close">✕</button>';}
+function onSheetKey(e){if(e.key==="Escape")closeSheet();}
 function openSheet(html){
   closeSheet();
   const d=document.createElement("div");d.className="scrim";d.id="scrim";
-  d.innerHTML='<div class="sheet"><div class="grab"></div>'+html+'</div>';
-  d.addEventListener("click",e=>{if(e.target===d)closeSheet();});
+  d.innerHTML='<div class="sheet">'+sheetChrome()+html+'</div>';
+  d.addEventListener("click",e=>{
+    if(e.target===d){closeSheet();return;}
+    if(e.target.closest&&e.target.closest("[data-xclose]"))closeSheet();
+  });
+  document.addEventListener("keydown",onSheetKey);
   document.body.appendChild(d);
 }
-function closeSheet(){const s=$("#scrim");if(s)s.remove();}
+function closeSheet(){const s=$("#scrim");if(s)s.remove();document.removeEventListener("keydown",onSheetKey);}
 function addSheetHTML(){
   return '<h3>Add to <select id="mealSel" style="width:auto;display:inline-block;padding:4px 8px;font-weight:700">'+
     MEALS.map(m=>'<option '+(m===sheetMeal?"selected":"")+'>'+m+'</option>').join("")+'</select></h3>'+
@@ -599,11 +610,16 @@ function foodListHTML(q){
   const rec=S.recents[S.active].slice(0,8);
   let html="";
   if(!q){
+    const favs=S.favs[S.active].map(nm=>allFoods().find(x=>x.name===nm)).filter(Boolean);
+    if(favs.length){
+      html+='<div class="label" style="margin:10px 0 2px">★ Favourites</div>';
+      html+=favs.map(foodRowHTML).join("");
+    }
     if(S.savedMeals.length){
       html+='<div class="label" style="margin:10px 0 2px">Saved meals</div>';
       for(const m of S.savedMeals){
         const tot=m.items.reduce((a,i)=>a+i.kcal*i.qty,0);
-        html+='<button class="foodrow" data-savedmeal="'+m.id+'"><span class="grow"><span class="fname">'+esc(m.name)+'</span><br><span class="fsub">'+m.items.length+' items</span></span><b class="num">'+r0(tot)+'</b></button>';
+        html+='<div class="foodrow"><button class="fmain" data-savedmeal="'+m.id+'"><span class="grow"><span class="fname">'+esc(m.name)+'</span><br><span class="fsub">'+m.items.length+' items</span></span><b class="num">'+r0(tot)+'</b></button></div>';
       }
     }
     if(rec.length){
@@ -616,8 +632,13 @@ function foodListHTML(q){
   if(q && !res.length) html+='<p class="tiny muted" style="text-align:center;padding:16px">No match — try Quick add or Custom.</p>';
   return html;
 }
+function isFav(name){return S.favs[S.active].indexOf(name)>=0;}
 function foodRowHTML(f){
-  return '<button class="foodrow" data-food="'+esc(f.name)+'"><span class="grow"><span class="fname">'+esc(f.name)+'</span><br><span class="fsub num">'+esc(f.serving)+' · P'+f.p+' C'+f.c+' F'+f.f+'</span></span><b class="num">'+f.kcal+'</b></button>';
+  const fav=isFav(f.name);
+  return '<div class="foodrow">'+
+    '<button class="fmain" data-food="'+esc(f.name)+'"><span class="grow"><span class="fname">'+esc(f.name)+'</span><br><span class="fsub num">'+esc(f.serving)+' · P'+f.p+' C'+f.c+' F'+f.f+'</span></span><b class="num">'+f.kcal+'</b></button>'+
+    '<button class="star'+(fav?' on':'')+'" data-star="'+esc(f.name)+'" aria-label="'+(fav?'Remove from favourites':'Add to favourites')+'">'+(fav?'★':'☆')+'</button>'+
+  '</div>';
 }
 function searchFoods(q,limit){
   const fs=allFoods();
@@ -690,9 +711,7 @@ function openEdit(id){
 function addEntry(f,qty,meal){
   const day=S.logs[S.active][S.date]||(S.logs[S.active][S.date]=[]);
   day.push({id:uid(),meal:meal,name:f.name,serving:f.serving,kcal:f.kcal,p:f.p||0,c:f.c||0,f:f.f||0,qty:qty,ts:Date.now()});
-  if(f.serving!=="—"){
-    const rec=S.recents[S.active].filter(n=>n!==f.name);rec.unshift(f.name);S.recents[S.active]=rec.slice(0,15);
-  }
+  const rec=S.recents[S.active].filter(n=>n!==f.name);rec.unshift(f.name);S.recents[S.active]=rec.slice(0,15);
   persist();
 }
 /* ================= Exercise sheet ================= */
@@ -1051,6 +1070,9 @@ function doImport(){
       for(const w of st.weights[pid]||[]){if(!seen[w.d])S.weights[pid].push(w);}
       S.weights[pid].sort((x,y)=>x.d<y.d?-1:1);
     }
+    for(const pid of ["a","b"]){
+      for(const nm of (st.favs&&st.favs[pid])||[]){if(S.favs[pid].indexOf(nm)<0)S.favs[pid].push(nm);}
+    }
     for(const c of st.custom||[]){if(!S.custom.some(x=>x.name===c.name))S.custom.push(c);}
     for(const m of st.savedMeals||[]){if(!S.savedMeals.some(x=>x.id===m.id))S.savedMeals.push(m);}
     persist();closeSheet();render();
@@ -1173,7 +1195,10 @@ function bindSheetBody(){
     $("#fSave").onclick=()=>{
       const k=+$("#fK").value;
       if(!(k>0)){alert("Enter how many calories.");return;}
-      addEntry({name:($("#fN").value.trim()||"Quick add"),serving:"—",kcal:r0(k),p:0,c:0,f:0},1,sheetMeal);
+      const label=$("#fN").value.trim();
+      const f={name:label||("Quick add "+r0(k)+" kcal"),serving:"1 serving",kcal:r0(k),p:0,c:0,f:0,kw:"quick"};
+      if(!S.custom.some(x=>x.name===f.name))S.custom.unshift(f);
+      addEntry(f,1,sheetMeal);
       closeSheet();render();
     };
   }
@@ -1190,6 +1215,15 @@ function bindSheetBody(){
 function bindFoodRows(){
   document.querySelectorAll("[data-food]").forEach(b=>b.onclick=()=>{
     pickedFood=allFoods().find(f=>f.name===b.dataset.food);pickedQty=1;refreshSheet();
+  });
+  document.querySelectorAll("[data-star]").forEach(b=>b.onclick=ev=>{
+    ev.stopPropagation();
+    const nm=b.dataset.star, arr=S.favs[S.active], i=arr.indexOf(nm);
+    if(i>=0)arr.splice(i,1); else arr.unshift(nm);
+    persist();
+    const qEl=$("#foodQ");
+    $("#foodList").innerHTML=foodListHTML(qEl?qEl.value.trim():"");
+    bindFoodRows();
   });
   document.querySelectorAll("[data-savedmeal]").forEach(b=>b.onclick=()=>{
     const m=S.savedMeals.find(x=>x.id===b.dataset.savedmeal); if(!m)return;
@@ -1216,7 +1250,7 @@ function bindExSheet(){
 }
 function refreshExSheet(){
   const s=$("#scrim"); if(!s)return;
-  s.querySelector(".sheet").innerHTML='<div class="grab"></div>'+exSheetHTML();
+  s.querySelector(".sheet").innerHTML=sheetChrome()+exSheetHTML();
   bindExSheet();
 }
 function bindExRows(){
