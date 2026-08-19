@@ -5,3 +5,5 @@
 tokens/
 *.garth
 garmin_tokens*
+__pycache__/
+*.pyc
