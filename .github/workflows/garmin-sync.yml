@@ -1,9 +1,11 @@
 name: Garmin sync
 
+# Schedule is off. Nothing runs unless you press "Run workflow" in the Actions
+# tab. To turn automatic syncing on, uncomment the two schedule lines below.
 on:
-  schedule:
-    - cron: "*/30 * * * *"      # every 30 min; GitHub often runs a few min late
-  workflow_dispatch:             # and a "Run workflow" button for on-demand syncs
+  # schedule:
+  #   - cron: "*/30 * * * *"
+  workflow_dispatch:
 
 concurrency:
   group: garmin-sync
