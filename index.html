@@ -1496,7 +1496,7 @@ function settingsHTML(){
      ? '<p class="tiny muted" style="margin:10px 0 10px">Your key is stored on this phone only — never in a backup, an invite, or the code.</p>'+
        '<div class="row"><button class="btn small grow" data-act="aikey">Replace key</button>'+
        '<button class="btn small danger grow" data-act="aiclear">Remove key</button></div>'
-     : '<p class="tiny muted" style="margin:10px 0 10px">Add your own Anthropic API key to photograph a meal and have it read for you. Roughly 2\u00a2 a photo, billed to your account. The key stays on this phone.</p>'+
+     : '<p class="tiny muted" style="margin:10px 0 10px">Add your own Anthropic API key to photograph a meal and have it read for you. Roughly 2\u00a2 a photo, billed to your account — an API account is separate from a Claude subscription and needs its own credit. The key stays on this phone.</p>'+
        '<button class="btn small primary" data-act="aikey">Add API key</button>')+
    '</section>';
   html+='<section class="card"><div class="label" style="margin-bottom:8px">Saving</div>'+
@@ -1533,7 +1533,7 @@ function settingsHTML(){
 }
 function aiKeySheet(){
   openSheet('<h3>Anthropic API key</h3>'+
-    '<p class="tiny muted" style="margin-top:-6px">Create one at <b>console.anthropic.com</b> → API keys, then paste it below. It is saved on this phone only — not in your backups, not in an invite to your partner, and not in the app\u2019s code.</p>'+
+    '<p class="tiny muted" style="margin-top:-6px">Create one at <b>platform.claude.com/settings/keys</b>, then paste it below. It is saved on this phone only — not in your backups, not in an invite to your partner, and not in the app\u2019s code.</p>'+
     '<div class="frow" style="margin-top:12px"><div><div class="flabel">Key</div>'+
       '<input id="aiK" type="password" autocomplete="off" placeholder="sk-ant-..." value="'+esc(S.aiKey||"")+'"></div></div>'+
     '<div id="aiWarn"></div>'+
