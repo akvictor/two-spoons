@@ -389,7 +389,8 @@ function newProfile(id,sex,h,w){
           activity:"light",pace:"lose025",override:null,goalWeight:null,waterTarget:8};
 }
 function blank(){
-  return {v:2,setup:false,active:"a",tab:"today",date:todayStr(),
+  return {v:3,setup:false,setupStep:"welcome",me:"a",paired:false,journey:{start:null},
+    active:"a",tab:"today",date:todayStr(),
     profiles:{a:newProfile("a","male",172,70), b:newProfile("b","female",160,55)},
     logs:{a:{},b:{}}, ex:{a:{},b:{}}, water:{a:{},b:{}},
     weights:{a:[],b:[]}, custom:[], savedMeals:[], recents:{a:[],b:[]}, favs:{a:[],b:[]}};
@@ -398,7 +399,18 @@ let S=blank();
 /* fills in anything a older save (or a partial import) is missing */
 function migrate(st){
   const base=blank();
-  st.v=2;
+  st.v=3;
+  if(!st.me)st.me="a";
+  st.journey=st.journey||{start:null};
+  if(st.setup&&!st.journey.start){
+    let first=null;
+    for(const pid of ["a","b"])for(const d in (st.logs&&st.logs[pid])||{}){if(!first||d<first)first=d;}
+    st.journey.start=first||todayStr();
+  }
+  if(st.paired===undefined)st.paired=!!(st.setup&&st.profiles&&st.profiles.b&&st.profiles.b.name);
+  st.active=st.me;
+  st.date=st.date||todayStr();
+  st.setupStep=st.setupStep||(st.setup?"done":"welcome");
   for(const k of ["logs","ex","water","weights","recents","favs"]){
     st[k]=st[k]||{}; st[k].a=st[k].a||base[k].a; st[k].b=st[k].b||base[k].b;
   }
@@ -479,23 +491,24 @@ function render(){
   bindMain();
 }
 function topbarHTML(){
-  const a=S.profiles.a,b=S.profiles.b;
-  const who='<div class="who">'+
-      '<button class="chip c1 '+(S.active==="a"?"on":"")+'" data-act="who" data-pid="a">'+avatarHTML(a,22)+'<span class="nm">'+esc(a.name||"Me")+'</span></button>'+
-      '<button class="chip c2 '+(S.active==="b"?"on":"")+'" data-act="who" data-pid="b">'+avatarHTML(b,22)+'<span class="nm">'+esc(b.name||"Partner")+'</span></button>'+
-    '</div>';
   if(S.tab==="settings"||S.tab==="us"){
-    return '<div class="topbar"><div class="datebar"><div style="width:40px"></div><div class="grow"><div class="dlabel">'+(S.tab==="us"?"Us":"Settings")+'</div></div><div style="width:40px"></div></div></div>';
+    return '<div class="topbar"><div class="datebar"><div style="width:40px"></div><div class="grow"><div class="dlabel">'+
+      (S.tab==="us"?"Journey":"Settings")+'</div></div><div style="width:40px"></div></div></div>';
   }
+  const me=meProf();
   return '<div class="topbar">'+
     '<div class="datebar">'+
       '<button class="dnav" data-act="prevday" aria-label="Previous day">&lsaquo;</button>'+
-      '<div class="grow"><div class="dlabel">'+niceDate(S.date)+'</div>'+(S.date!==todayStr()?'<div class="dsub"><button data-act="gotoday" style="color:var(--p1);font-weight:600">back to today</button></div>':"")+'</div>'+
+      '<div class="grow"><div class="dlabel">'+niceDate(S.date)+'</div>'+
+        (S.date!==todayStr()
+          ? '<div class="dsub"><button data-act="gotoday" style="color:var(--p1);font-weight:600">back to today</button></div>'
+          : '<div class="dsub">Day <b class="num">'+journeyDay()+'</b> · '+esc(me.name)+'</div>')+
+      '</div>'+
       '<button class="dnav" data-act="nextday" aria-label="Next day" '+(S.date===todayStr()?'style="opacity:.3" disabled':"")+'>&rsaquo;</button>'+
-    '</div>'+who+'</div>';
+    '</div></div>';
 }
 function tabsHTML(){
-  const t=[["today","🍽️","Today"],["trends","📈","Trends"],["us","👫","Us"],["settings","⚙️","Settings"]];
+  const t=[["today","🍽️","Today"],["trends","📈","Trends"],["us","👫","Journey"],["settings","⚙️","Settings"]];
   return '<nav class="tabs"><div class="in">'+t.map(x=>
     '<button data-act="tab" data-tab="'+x[0]+'" class="'+(S.tab===x[0]?"on":"")+'"><span class="ic">'+x[1]+'</span>'+x[2]+'</button>').join("")+'</div></nav>';
 }
@@ -966,59 +979,120 @@ function trendsHTML(){
     '</section>';
   return html;
 }
-/* ================= Us ================= */
+/* ================= Journey ================= */
 function usHTML(){
-  const a=S.profiles.a,b=S.profiles.b;
-  const days=[];for(let i=6;i>=0;i--)days.push(addDays(todayStr(),-i));
-  let html='<div class="uspair">';
-  for(const p of [a,b]){
+  const me=meProf(), them=themProf(), st=journeyStats();
+  const days=[];for(let k=6;k>=0;k--)days.push(addDays(todayStr(),-k));
+  let html='<section class="card" style="text-align:center">'+
+    '<div class="label">Day</div>'+
+    '<div style="font-size:44px;font-weight:800;letter-spacing:-.03em;line-height:1" class="num">'+st.day+'</div>'+
+    '<div class="tiny muted">since '+niceDate(S.journey.start||todayStr())+'</div>'+
+    '<div class="row" style="justify-content:center;gap:22px;margin-top:14px">'+
+      '<div><div class="num" style="font-size:19px;font-weight:800">'+st.bothLogged+'</div><div class="tiny muted">days together</div></div>'+
+      '<div><div class="num" style="font-size:19px;font-weight:800">'+st.bothOnTarget+'</div><div class="tiny muted">both on target</div></div>'+
+      '<div><div class="num" style="font-size:19px;font-weight:800">'+(st.lost>0?"−":"")+Math.abs(st.lost).toFixed(1)+'</div><div class="tiny muted">kg between you</div></div>'+
+    '</div></section>';
+  if(!S.paired){
+    html+='<section class="card"><div class="row">'+avatarHTML(them,34)+
+      '<span class="grow tiny"><b>'+esc(them.name||"Your partner")+'</b> hasn\u2019t joined yet.<br>'+
+      '<span class="muted">Send an invite and you\u2019ll see each other here.</span></span></div>'+
+      '<button class="btn small primary" style="margin-top:10px" data-act="invite">Send invite</button></section>';
+  }
+  html+='<div class="uspair">';
+  for(const p of [me,them]){
     const bud=dayBudget(p.id,todayStr()),eaten=dayKcal(p.id,todayStr()),left=bud-eaten;
-    html+='<div class="uscard '+(p.id==="a"?"c1":"c2")+'"><div class="row" style="gap:8px">'+avatarHTML(p,30)+'<span class="nm grow">'+esc(p.name)+'</span></div>'+
-     '<div style="font-size:23px;font-weight:800;margin:6px 0" class="num">'+r0(eaten)+'<span class="tiny muted" style="font-weight:600"> / '+r0(bud)+'</span></div>'+
-     '<span class="pill '+(left>=0?"good":"over")+'">'+(left>=0?r0(left)+" left":r0(-left)+" over")+'</span>'+
-     '<div class="tiny muted" style="margin-top:8px">🔥 <span class="num">'+streak(p.id)+'</span>-day streak'+
-     (dayBurn(p.id,todayStr())?' · <span class="num" style="color:var(--burn)">+'+r0(dayBurn(p.id,todayStr()))+'</span>':"")+'</div></div>';
+    const has=anyLogged(p.id,todayStr());
+    html+='<div class="uscard '+(p.id==="a"?"c1":"c2")+'"><div class="row" style="gap:8px">'+avatarHTML(p,30)+
+      '<span class="nm grow">'+esc(p.name)+(p.id===S.me?' <span class="tiny muted">(you)</span>':"")+'</span></div>'+
+      (has
+        ? '<div style="font-size:23px;font-weight:800;margin:6px 0" class="num">'+r0(eaten)+'<span class="tiny muted" style="font-weight:600"> / '+r0(bud)+'</span></div>'+
+          '<span class="pill '+(left>=0?"good":"over")+'">'+(left>=0?r0(left)+" left":r0(-left)+" over")+'</span>'
+        : '<div class="tiny muted" style="margin:10px 0">Nothing logged today</div>')+
+      '<div class="tiny muted" style="margin-top:8px">🔥 <span class="num">'+streak(p.id)+'</span>-day streak'+
+      (dayBurn(p.id,todayStr())?' · <span class="num" style="color:var(--burn)">+'+r0(dayBurn(p.id,todayStr()))+'</span>':"")+'</div></div>';
   }
   html+='</div>';
-  const bothToday=anyLogged("a",todayStr())&&anyLogged("b",todayStr());
-  const bothUnder=bothToday&&dayKcal("a",todayStr())<=dayBudget("a",todayStr())&&dayKcal("b",todayStr())<=dayBudget("b",todayStr());
+  const bothUnder=anyLogged("a",todayStr())&&anyLogged("b",todayStr())&&
+    dayKcal("a",todayStr())<=dayBudget("a",todayStr())&&dayKcal("b",todayStr())<=dayBudget("b",todayStr());
   if(bothUnder)html+='<p class="tiny" style="text-align:center;margin:10px 0;color:var(--good);font-weight:600">Both under budget today 🎉</p>';
   html+='<section class="card" style="margin-top:14px"><div class="label" style="margin-bottom:4px">This week</div>'+
-   '<div class="legend"><span class="li"><span class="sw" style="background:var(--p1)"></span>'+esc(a.name)+'</span><span class="li"><span class="sw" style="background:var(--p2)"></span>'+esc(b.name)+'</span></div>'+
+   '<div class="legend"><span class="li"><span class="sw" style="background:var(--p1)"></span>'+esc(S.profiles.a.name)+'</span>'+
+   '<span class="li"><span class="sw" style="background:var(--p2)"></span>'+esc(S.profiles.b.name)+'</span></div>'+
    barChart(days,[{color:"var(--p1)",vals:days.map(d=>dayKcal("a",d))},{color:"var(--p2)",vals:days.map(d=>dayKcal("b",d))}],0)+
-   '<details class="dtable"><summary>View as table</summary><table class="data"><tr><th>Day</th><th>'+esc(a.name)+'</th><th>'+esc(b.name)+'</th></tr>'+
+   '<details class="dtable"><summary>View as table</summary><table class="data"><tr><th>Day</th><th>'+esc(S.profiles.a.name)+'</th><th>'+esc(S.profiles.b.name)+'</th></tr>'+
    days.map(d=>'<tr><td>'+niceDate(d)+'</td><td class="num">'+r0(dayKcal("a",d))+'</td><td class="num">'+r0(dayKcal("b",d))+'</td></tr>').join("")+'</table></details></section>';
-  /* combined 7-day summary */
-  html+='<section class="card"><div class="label" style="margin-bottom:10px">Last 7 days together</div>';
-  for(const p of [a,b]){
-    const st=weekStats(p.id,7);
-    html+='<div class="row" style="margin-bottom:10px">'+avatarHTML(p,26)+
-      '<span class="grow tiny"><b>'+esc(p.name)+'</b><br><span class="muted num">'+r0(st.avgIn)+' avg · '+st.onTarget+'/'+st.logged+' on target</span></span>'+
-      (st.logged>=3?'<span class="pill '+(st.weeklyKg>0.02?"good":st.weeklyKg<-0.02?"over":"")+'">'+(st.weeklyKg>0?"−":st.weeklyKg<0?"+":"")+Math.abs(st.weeklyKg).toFixed(2)+' kg/wk</span>':'<span class="tiny muted">more data needed</span>')+
-      '</div>';
-  }
+  html+='<section class="card"><div class="label" style="margin-bottom:10px">Milestones</div>';
+  for(const m of milestones())
+    html+='<div class="row" style="padding:5px 0"><span style="width:22px">'+(m.done?"✅":"⬜")+'</span>'+
+      '<span class="tiny '+(m.done?"":"muted")+'">'+esc(m.k)+'</span></div>';
   html+='</section>';
   const wa=S.weights.a.slice(-60),wb=S.weights.b.slice(-60);
   if(wa.length>=2||wb.length>=2){
     html+='<section class="card"><div class="label" style="margin-bottom:4px">Weight trends</div>';
-    if(wa.length>=2)html+='<div class="tiny muted">'+esc(a.name)+'</div>'+lineChart(wa.map(w=>({d:w.d,v:w.kg})),"var(--p1)","kg",a.goalWeight);
-    if(wb.length>=2)html+='<div class="tiny muted" style="margin-top:8px">'+esc(b.name)+'</div>'+lineChart(wb.map(w=>({d:w.d,v:w.kg})),"var(--p2)","kg",b.goalWeight);
+    if(wa.length>=2)html+='<div class="tiny muted">'+esc(S.profiles.a.name)+'</div>'+lineChart(wa.map(w=>({d:w.d,v:w.kg})),"var(--p1)","kg",S.profiles.a.goalWeight);
+    if(wb.length>=2)html+='<div class="tiny muted" style="margin-top:8px">'+esc(S.profiles.b.name)+'</div>'+lineChart(wb.map(w=>({d:w.d,v:w.kg})),"var(--p2)","kg",S.profiles.b.goalWeight);
     html+='</section>';
   }
-  html+='<p class="tiny muted" style="text-align:center;margin:16px 0">Logging on separate phones? Sync via Settings → Export / Import.</p>';
+  html+='<button class="btn" style="width:100%" data-act="import">Sync with '+esc(them.name||"partner")+'</button>'+
+        '<p class="tiny muted" style="text-align:center;margin:10px 0 4px">Swap codes now and then to keep both phones up to date.</p>';
   return html;
+}
+/* ================= the journey ================= */
+function partnerOf(pid){return pid==="a"?"b":"a";}
+function meProf(){return S.profiles[S.me];}
+function themProf(){return S.profiles[partnerOf(S.me)];}
+function journeyDay(){
+  if(!S.journey||!S.journey.start)return 1;
+  const a=new Date(S.journey.start).getTime(), b=new Date(todayStr()).getTime();
+  return Math.max(1,Math.round((b-a)/86400000)+1);
+}
+function journeyStats(){
+  const start=(S.journey&&S.journey.start)||todayStr();
+  const days=[];
+  for(let d=start;d<=todayStr();d=addDays(d,1)){days.push(d);if(days.length>400)break;}
+  let bothLogged=0,bothOnTarget=0;
+  for(const d of days){
+    if(anyLogged("a",d)&&anyLogged("b",d)){
+      bothLogged++;
+      if(dayKcal("a",d)<=dayBudget("a",d)&&dayKcal("b",d)<=dayBudget("b",d))bothOnTarget++;
+    }
+  }
+  let lost=0;
+  for(const pid of ["a","b"]){
+    const w=S.weights[pid];
+    if(w&&w.length>=2)lost+=(w[0].kg-w[w.length-1].kg);
+  }
+  return {day:journeyDay(),days:days.length,bothLogged:bothLogged,bothOnTarget:bothOnTarget,lost:lost};
+}
+function milestones(){
+  const st=journeyStats(), sa=streak("a"), sb=streak("b");
+  return [
+    {k:"Both logged a day together", done:st.bothLogged>=1},
+    {k:"A week of the journey",      done:st.day>=7},
+    {k:"5 days both on target",      done:st.bothOnTarget>=5},
+    {k:"7-day streak each",          done:sa>=7&&sb>=7},
+    {k:"1 kg gone between you",      done:st.lost>=1},
+    {k:"5 kg gone between you",      done:st.lost>=5}
+  ];
 }
 /* ================= Settings ================= */
 function settingsHTML(){
   let html="";
-  for(const pid of ["a","b"]){
-    const p=S.profiles[pid];
-    html+='<section class="card"><div class="row" style="margin-bottom:12px">'+avatarHTML(p,44)+
-      '<span class="grow"><b>'+esc(p.name)+'</b><br><span class="tiny muted num">budget '+baseBudget(p)+' kcal'+(p.goalWeight?' · goal '+p.goalWeight+' kg':"")+'</span></span></div>'+
-      '<div class="row"><button class="btn small grow" data-act="editprof" data-pid="'+pid+'">Edit name &amp; goal</button>'+
-      '<button class="btn small grow" data-act="photo" data-pid="'+pid+'">'+(p.photo?"Change photo":"Add photo")+'</button>'+
-      (p.photo?'<button class="btn small danger" data-act="rmphoto" data-pid="'+pid+'">Remove</button>':"")+'</div></section>';
-  }
+  const me=meProf(), them=themProf();
+  html+='<section class="card"><div class="row" style="margin-bottom:12px">'+avatarHTML(me,44)+
+    '<span class="grow"><b>'+esc(me.name)+'</b> <span class="tiny muted">(you)</span><br><span class="tiny muted num">budget '+baseBudget(me)+' kcal'+(me.goalWeight?' · goal '+me.goalWeight+' kg':"")+'</span></span></div>'+
+    '<div class="row"><button class="btn small grow" data-act="editprof" data-pid="'+me.id+'">Edit name &amp; goal</button>'+
+    '<button class="btn small grow" data-act="photo" data-pid="'+me.id+'">'+(me.photo?"Change photo":"Add photo")+'</button>'+
+    (me.photo?'<button class="btn small danger" data-act="rmphoto" data-pid="'+me.id+'">Remove</button>':"")+'</div></section>';
+  html+='<section class="card"><div class="row" style="margin-bottom:10px">'+avatarHTML(them,44)+
+    '<span class="grow"><b>'+esc(them.name||"Your partner")+'</b><br><span class="tiny muted">'+
+      (S.paired?'Connected · budget '+baseBudget(them)+' kcal':'Not joined yet')+'</span></span></div>'+
+    '<div class="row">'+
+      '<button class="btn small grow" data-act="invite">'+(S.paired?"Re-send invite":"Send invite")+'</button>'+
+      '<button class="btn small grow" data-act="import">Sync now</button></div>'+
+    '<p class="tiny muted" style="margin:10px 0 0">'+
+      (S.paired?'They keep their own details on their phone; syncing brings their progress across.'
+               :'They install the app, choose <b>Join my partner</b>, and paste your invite.')+'</p></section>';
   if(S.savedMeals.length){
     html+='<section class="card"><div class="label" style="margin-bottom:8px">Saved meals</div>';
     for(const m of S.savedMeals){
@@ -1059,9 +1133,9 @@ function settingsHTML(){
     html+='<section class="card"><div class="label" style="margin-bottom:8px">Garmin</div>'+body+
       '<p class="tiny muted" style="margin:10px 0 0">Workouts arrive on their own every half hour; opening the app also checks.</p></section>';
   }
-  html+='<section class="card"><div class="label" style="margin-bottom:8px">Sync between phones</div>'+
-   '<p class="tiny muted" style="margin:0 0 10px">Each phone keeps its own copy. To combine: one of you exports, the other imports — entries merge safely (nothing is duplicated or lost).</p>'+
-   '<div class="row"><button class="btn grow" data-act="export">Export data</button><button class="btn grow" data-act="import">Import</button></div>'+
+  html+='<section class="card"><div class="label" style="margin-bottom:8px">Backup</div>'+
+   '<p class="tiny muted" style="margin:0 0 10px">A copy of everything on this phone \u2014 useful before changing phone, or to restore if something goes wrong.</p>'+
+   '<div class="row"><button class="btn grow" data-act="export">Save a backup</button><button class="btn grow" data-act="import">Restore</button></div>'+
    '<div id="exportOut"></div></section>';
   html+='<section class="card"><div class="label" style="margin-bottom:8px">About</div>'+
    '<p class="tiny muted" style="margin:0">Food and exercise values are typical estimates — treat them as a guide, not gospel. Budgets use the Mifflin-St Jeor formula; exercise is estimated from your weight and activity intensity. If you log workouts here, pick a lower activity level so the same effort is not counted twice. Not medical advice.</p>'+
@@ -1167,6 +1241,52 @@ function doExport(){
     $("#expDl").textContent=ok?"Saved ✓":"Download blocked — copy instead";
   };
 }
+function mergeFrom(st,opts){
+  opts=opts||{};
+  migrate(st);
+  for(const pid of ["a","b"]){
+    for(const key of ["logs","ex"]){
+      const incoming=st[key][pid]||{};
+      for(const d in incoming){
+        const cur=S[key][pid][d]||(S[key][pid][d]=[]);
+        for(const e of incoming[d]){if(!cur.some(x=>x.id===e.id))cur.push(e);}
+      }
+    }
+    const inW=st.water[pid]||{};
+    for(const d in inW)S.water[pid][d]=Math.max(S.water[pid][d]||0,inW[d]);
+    const seen={};for(const w of S.weights[pid])seen[w.d]=w;
+    for(const w of st.weights[pid]||[]){if(!seen[w.d])S.weights[pid].push(w);}
+    S.weights[pid].sort((x,y)=>x.d<y.d?-1:1);
+    for(const nm of (st.favs&&st.favs[pid])||[]){if(S.favs[pid].indexOf(nm)<0)S.favs[pid].push(nm);}
+  }
+  /* each phone owns its own profile; the other one comes from them */
+  if(opts.profiles!==false){
+    const them=partnerOf(S.me);
+    if(st.profiles[them]&&st.profiles[them].name)
+      S.profiles[them]=Object.assign({},st.profiles[them],{id:them});
+  }
+  for(const c of st.custom||[]){if(!S.custom.some(x=>x.name===c.name))S.custom.push(c);}
+  for(const m of st.savedMeals||[]){if(!S.savedMeals.some(x=>x.id===m.id))S.savedMeals.push(m);}
+  if(st.journey&&st.journey.start){
+    if(!S.journey.start||st.journey.start<S.journey.start)S.journey.start=st.journey.start;
+  }
+}
+function openInvite(){
+  const json=backupJSON();
+  openSheet('<h3>Invite '+esc(themProf().name||"your partner")+'</h3>'+
+    '<p class="tiny muted" style="margin-top:-6px">Send this code however you like — WhatsApp, email, AirDrop. On their phone they choose <b>Join my partner</b> and paste it in.</p>'+
+    '<textarea rows="3" readonly id="invTxt" style="margin-top:10px;font-size:16px">'+esc(json)+'</textarea>'+
+    '<div class="row" style="margin-top:10px"><button class="btn grow primary" id="invCopy">Copy code</button>'+
+    '<button class="btn grow" id="invFile">Send as file</button></div>');
+  $("#invCopy").onclick=async()=>{
+    try{await navigator.clipboard.writeText(json);}catch(e){$("#invTxt").select();document.execCommand("copy");}
+    $("#invCopy").textContent="Copied ✓";
+  };
+  $("#invFile").onclick=async()=>{
+    const ok=await downloadBackup();
+    $("#invFile").textContent=ok?"Saved ✓":"Copy the code instead";
+  };
+}
 function doImport(){
   openSheet('<h3>Import data</h3><p class="tiny muted" style="margin-top:-6px">Paste an export from the other phone, or choose the file.</p>'+
    '<textarea id="impTxt" rows="4" placeholder="Paste exported data here"></textarea>'+
@@ -1178,47 +1298,147 @@ function doImport(){
     let obj;try{obj=JSON.parse($("#impTxt").value);}catch(e){alert("That doesn't look like a valid export.");return;}
     const st=obj.state||obj;
     if(!st.logs||!st.profiles){alert("That doesn't look like a Two Spoons export.");return;}
-    migrate(st);
-    for(const pid of ["a","b"]){
-      for(const key of ["logs","ex"]){
-        const inLogs=st[key][pid]||{};
-        for(const d in inLogs){
-          const cur=S[key][pid][d]||(S[key][pid][d]=[]);
-          for(const e of inLogs[d]){if(!cur.some(x=>x.id===e.id))cur.push(e);}
-        }
-      }
-      const inW=st.water[pid]||{};
-      for(const d in inW){S.water[pid][d]=Math.max(S.water[pid][d]||0,inW[d]);}
-      const seen={};for(const w of S.weights[pid])seen[w.d]=w;
-      for(const w of st.weights[pid]||[]){if(!seen[w.d])S.weights[pid].push(w);}
-      S.weights[pid].sort((x,y)=>x.d<y.d?-1:1);
-    }
-    for(const pid of ["a","b"]){
-      for(const nm of (st.favs&&st.favs[pid])||[]){if(S.favs[pid].indexOf(nm)<0)S.favs[pid].push(nm);}
-    }
-    for(const c of st.custom||[]){if(!S.custom.some(x=>x.name===c.name))S.custom.push(c);}
-    for(const m of st.savedMeals||[]){if(!S.savedMeals.some(x=>x.id===m.id))S.savedMeals.push(m);}
+    mergeFrom(st);
+    S.paired=true;
     persist();closeSheet();render();
-    alert("Merged ✓");
+    alert("Synced ✓");
   };
 }
-/* ================= Setup ================= */
+/* ================= Setup: one phone, one person ================= */
 function setupHTML(){
-  return '<div style="padding:28px 0 10px;text-align:center"><div style="font-size:44px">🥄🥄</div><h1 style="font-size:26px;letter-spacing:-.02em">Two Spoons</h1>'+
-   '<p class="muted" style="margin:6px 0 0;font-size:14.5px">Calorie tracking for the two of you.</p></div>'+
-   '<section class="card"><div class="label" style="margin-bottom:10px;color:var(--p1)">You</div>'+profFormHTML("a_",S.profiles.a)+'</section>'+
-   '<section class="card"><div class="label" style="margin-bottom:10px;color:var(--p2)">Your partner</div>'+profFormHTML("b_",S.profiles.b)+'</section>'+
-   '<p class="tiny muted" style="text-align:center;margin:0 0 14px">You can add photos and change names later in Settings.</p>'+
-   '<button class="btn primary" style="width:100%;margin-bottom:30px" id="setupGo">Start tracking</button>';
+  const step=S.setupStep||"welcome";
+  if(step==="join")   return setupJoinHTML();
+  if(step==="you")    return setupYouHTML();
+  if(step==="partner")return setupPartnerHTML();
+  if(step==="done")   return setupDoneHTML();
+  return setupWelcomeHTML();
+}
+function setupShell(inner,back){
+  return '<div style="padding:22px 0 8px;text-align:center">'+
+    '<div style="font-size:40px;line-height:1">🥄🥄</div>'+
+    '<h1 style="font-size:24px;letter-spacing:-.02em">Two Spoons</h1></div>'+
+    (back?'<button class="btn small" data-s="'+back+'" style="margin-bottom:12px">‹ Back</button>':"")+
+    inner;
+}
+function setupWelcomeHTML(){
+  return setupShell(
+    '<p class="muted" style="text-align:center;margin:0 0 20px;font-size:15px">'+
+      'One phone each, one shared journey. You track yourself, and you both see how it\u2019s going.</p>'+
+    '<button class="btn primary" style="width:100%;margin-bottom:10px;padding:14px" data-s="start">Start a new journey</button>'+
+    '<button class="btn" style="width:100%;padding:14px" data-s="join">Join my partner</button>'+
+    '<p class="tiny muted" style="text-align:center;margin:16px 0 30px">'+
+      'Whoever sets up first starts the journey — the other one joins.</p>');
+}
+function setupYouHTML(){
+  const p=meProf();
+  return setupShell(
+    '<h3 style="margin-bottom:4px">About you</h3>'+
+    '<p class="tiny muted" style="margin:0 0 14px">Only your own details — your partner fills in theirs on their phone.</p>'+
+    '<section class="card"><div class="row" style="margin-bottom:14px">'+avatarHTML(p,54)+
+      '<div class="grow"><button class="btn small" id="uPhoto">'+(p.photo?"Change photo":"Add a photo")+'</button>'+
+      (p.photo?' <button class="btn small danger" id="uRmPhoto">Remove</button>':"")+
+      '<div class="tiny muted" style="margin-top:6px">Optional</div></div></div>'+
+    profFormHTML("me_",p)+'</section>'+
+    '<button class="btn primary" style="width:100%;margin-bottom:30px" data-s="youNext">Continue</button>',
+    S.paired?null:"welcome");
+}
+function setupPartnerHTML(){
+  const t=themProf();
+  return setupShell(
+    '<h3 style="margin-bottom:4px">Who are you doing this with?</h3>'+
+    '<p class="tiny muted" style="margin:0 0 14px">Just their name for now. They add their own details when they join on their phone.</p>'+
+    '<section class="card"><div class="frow"><div><div class="flabel">Their name</div>'+
+      '<input id="pName" value="'+esc(t.name||"")+'" placeholder="e.g. Michelle"></div></div></section>'+
+    '<button class="btn primary" style="width:100%;margin-bottom:30px" data-s="partnerNext">Continue</button>',
+    "you");
+}
+function setupJoinHTML(){
+  return setupShell(
+    '<h3 style="margin-bottom:4px">Join your partner</h3>'+
+    '<p class="tiny muted" style="margin:0 0 14px">On their phone: <b>Settings → Send invite</b>. Paste the code they send you, or pick the file.</p>'+
+    '<section class="card">'+
+      '<textarea id="jTxt" rows="4" placeholder="Paste their invite code here"></textarea>'+
+      '<input type="file" id="jFile" accept=".json,application/json" style="margin-top:10px">'+
+      '<div id="jErr"></div>'+
+    '</section>'+
+    '<button class="btn primary" style="width:100%" data-s="joinNext">Continue</button>'+
+    '<p class="tiny muted" style="text-align:center;margin:14px 0 30px">'+
+      'Not got it yet? <button data-s="joinSkip" style="color:var(--p1);font-weight:600">Set up on your own</button> and connect later.</p>',
+    "welcome");
+}
+function setupDoneHTML(){
+  const me=meProf(), them=themProf();
+  return setupShell(
+    '<div style="text-align:center">'+avatarHTML(me,72)+
+      '<h3 style="margin:12px 0 4px">You\u2019re set, '+esc(me.name)+'</h3>'+
+      '<p class="tiny muted" style="margin:0 0 18px">Day 1 of your journey'+(them.name?' with '+esc(them.name):"")+'.</p></div>'+
+    '<section class="card"><div class="row" style="justify-content:space-between">'+
+      '<span class="tiny">Your daily budget</span><b class="num" style="font-size:20px">'+baseBudget(me)+' kcal</b></div>'+
+      '<p class="tiny muted" style="margin:8px 0 0">Worked out from your details and goal. It shifts as your weight does, and exercise adds to it.</p></section>'+
+    (S.paired
+      ? '<section class="card"><div class="row">'+avatarHTML(them,34)+'<span class="grow tiny"><b>'+esc(them.name)+'</b> is connected.<br><span class="muted">You\u2019ll see each other in the Journey tab.</span></span></div></section>'
+      : '<section class="card"><div class="label" style="margin-bottom:8px">Next: bring '+esc(them.name||"your partner")+' in</div>'+
+        '<p class="tiny muted" style="margin:0 0 10px">Send an invite so you can see each other\u2019s progress. You can also do this later from Settings.</p>'+
+        '<button class="btn small primary" data-s="invite">Send invite</button></section>')+
+    '<button class="btn primary" style="width:100%;margin-bottom:30px" data-s="finish">Start tracking</button>');
+}
+function applyInvite(raw){
+  let obj;
+  try{obj=JSON.parse(raw);}catch(e){return {ok:false,msg:"That doesn\u2019t look like an invite code."};}
+  const st=obj.state||obj;
+  if(!st||!st.profiles||!st.logs)return {ok:false,msg:"That isn\u2019t a Two Spoons invite."};
+  migrate(st);
+  const theirs=st.me||"a", mine=partnerOf(theirs);
+  S.me=mine;S.active=mine;
+  S.profiles[theirs]=Object.assign({},st.profiles[theirs],{id:theirs});
+  S.journey.start=(st.journey&&st.journey.start)||todayStr();
+  mergeFrom(st,{profiles:false});
+  S.paired=true;persist();
+  return {ok:true};
 }
 function bindSetup(){
-  $("#a_name").placeholder="Your name"; $("#b_name").placeholder="Their name";
-  $("#setupGo").onclick=()=>{
-    readProfForm("a_",S.profiles.a); readProfForm("b_",S.profiles.b);
-    if(!S.profiles.a.name)S.profiles.a.name="Me";
-    if(!S.profiles.b.name)S.profiles.b.name="Partner";
-    S.setup=true; persist(); render();
-  };
+  if($("#me_name")){
+    $("#me_name").placeholder="Your name";
+    $("#uPhoto").onclick=()=>pickPhoto(S.me,()=>render());
+    if($("#uRmPhoto"))$("#uRmPhoto").onclick=()=>{meProf().photo=null;persist();render();};
+  }
+  if($("#jFile")){
+    $("#jFile").onchange=e=>{const f=e.target.files[0];if(!f)return;
+      const r=new FileReader();r.onload=()=>{$("#jTxt").value=r.result;};r.readAsText(f);};
+  }
+  document.querySelectorAll("[data-s]").forEach(el=>{
+    el.onclick=()=>{
+      const a=el.dataset.s;
+      if(a==="welcome"||a==="you"){S.setupStep=a;render();}
+      else if(a==="start"){S.me="a";S.active="a";S.setupStep="you";render();}
+      else if(a==="join"){S.setupStep="join";render();}
+      else if(a==="joinSkip"){S.me="b";S.active="b";S.setupStep="you";render();}
+      else if(a==="joinNext"){
+        const raw=$("#jTxt").value.trim();
+        if(!raw){$("#jErr").innerHTML='<p class="tiny" style="color:var(--over);margin:8px 0 0">Paste the invite, or choose the file they sent.</p>';return;}
+        const res=applyInvite(raw);
+        if(!res.ok){$("#jErr").innerHTML='<p class="tiny" style="color:var(--over);margin:8px 0 0">'+esc(res.msg)+'</p>';return;}
+        S.setupStep="you";render();
+      }
+      else if(a==="youNext"){
+        readProfForm("me_",meProf());
+        if(!meProf().name)meProf().name="Me";
+        if(S.paired){S.journey.start=S.journey.start||todayStr();S.setupStep="done";}
+        else S.setupStep="partner";
+        persist();render();
+      }
+      else if(a==="partnerNext"){
+        themProf().name=$("#pName").value.trim()||"Partner";
+        S.journey.start=todayStr();S.setupStep="done";persist();render();
+      }
+      else if(a==="invite"){openInvite();}
+      else if(a==="finish"){
+        S.setup=true;S.active=S.me;
+        S.journey.start=S.journey.start||todayStr();
+        persist();render();
+      }
+    };
+  });
 }
 /* ================= events ================= */
 function bindMain(){
@@ -1265,6 +1485,7 @@ function bindMain(){
         S.weights[S.active]=ws; prof().weight=v; persist();render();
       }
       else if(a==="editprof"){editProfSheet(pid);}
+      else if(a==="invite"){openInvite();}
       else if(a==="photo"){pickPhoto(pid);}
       else if(a==="rmphoto"){S.profiles[pid].photo=null;persist();render();}
       else if(a==="backupnow"){downloadBackup().then(ok=>{if(!ok){S.tab="settings";render();doExport();}});}

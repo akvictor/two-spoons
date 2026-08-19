@@ -7,9 +7,13 @@ Inspired by the parts of LoseIt! and Cal AI that actually get used day to day.
 
 ## What it does
 
-- **Two profiles side by side**, each with a name you can change at any time and an
-  optional photo. Calorie budgets come from sex, age, height, weight, activity level and
-  goal (Mifflin-St Jeor), recalculated automatically as logged weight changes.
+- **One phone each.** You set up only your own details; your partner installs the app,
+  taps *Join my partner*, pastes your invite code, and fills in theirs. Each phone owns
+  its person — syncing brings the other's progress across without touching your own.
+- **A shared journey** — a day count from the moment the first of you started, days you
+  both logged, days you were both on target, combined weight change, and milestones.
+- Names are editable any time and photos optional. Calorie budgets come from sex, age,
+  height, weight, activity level and goal (Mifflin-St Jeor), recalculated as weight changes.
 - **Daily log** with a calorie ring, remaining count, protein/carb/fat bars, meals split
   into breakfast / lunch / dinner / snacks, streaks, copy-yesterday, and day-by-day history.
 - **Exercise earns calories back**, three ways: pick an activity and minutes and the burn
@@ -58,9 +62,11 @@ and reports which one is live in Settings:
 
 ## Using it on two phones
 
-Each device keeps its own copy. To combine them, one person exports from Settings and the
-other imports — food, exercise, water and weights merge by id, so importing twice never
-duplicates or loses anything.
+Each device keeps its own copy. One of you starts the journey and sends an invite
+(**Settings → Send invite**); the other chooses **Join my partner** during setup. After
+that, **Sync now** on either phone merges both sides: food, exercise, water, weights and
+favourites merge by id, so syncing twice never duplicates or loses anything. Your own
+profile is always authoritative on your own phone.
 
 ## Accuracy
 
