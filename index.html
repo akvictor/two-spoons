@@ -1041,6 +1041,24 @@ function settingsHTML(){
    '<span class="pill '+(Store.saving()?"good":"over")+'">'+(Store.saving()?"Saving on":"Not saving")+'</span></div>'+
    (Store.saving()?"":'<p class="tiny muted" style="margin:10px 0 0">Keep a backup file and restore it when you come back, or open the app file directly where saving works normally.</p>')+
    '</section>';
+  if(S.garminSeen||S.garminState){
+    const st=S.garminState||{};
+    let body;
+    if(st.reason==="nocrypto"){
+      body='<p class="tiny" style="color:var(--over);margin:0">This viewer can\u2019t decrypt \u2014 open the app over https and it will work.</p>';
+    }else if(st.reason==="needpass"||st.reason==="badpass"){
+      body='<p class="tiny" style="color:var(--over);margin:0 0 8px">'+
+        (st.reason==="badpass"?"That passphrase didn\u2019t work.":"This feed is encrypted \u2014 enter the passphrase once on this phone.")+'</p>'+
+        '<div class="row"><input id="gPass" type="password" placeholder="Sync passphrase" style="max-width:220px">'+
+        '<button class="btn small primary" data-act="garminpass">Unlock</button></div>';
+    }else{
+      body='<div class="row" style="justify-content:space-between"><span class="tiny">Last updated <b>'+
+        (garminAgo(S.garminAt)||"never")+'</b></span>'+
+        '<button class="btn small" data-act="garminsync">Sync now</button></div>';
+    }
+    html+='<section class="card"><div class="label" style="margin-bottom:8px">Garmin</div>'+body+
+      '<p class="tiny muted" style="margin:10px 0 0">Workouts arrive on their own every few hours; opening the app also checks.</p></section>';
+  }
   html+='<section class="card"><div class="label" style="margin-bottom:8px">Sync between phones</div>'+
    '<p class="tiny muted" style="margin:0 0 10px">Each phone keeps its own copy. To combine: one of you exports, the other imports — entries merge safely (nothing is duplicated or lost).</p>'+
    '<div class="row"><button class="btn grow" data-act="export">Export data</button><button class="btn grow" data-act="import">Import</button></div>'+
@@ -1251,6 +1269,17 @@ function bindMain(){
       else if(a==="rmphoto"){S.profiles[pid].photo=null;persist();render();}
       else if(a==="backupnow"){downloadBackup().then(ok=>{if(!ok){S.tab="settings";render();doExport();}});}
       else if(a==="hidetip"){S.hideTip=true;persist();render();}
+      else if(a==="garminsync"){
+        el.textContent="Syncing\u2026";
+        garminSync().then(res=>{S.garminState=res;persist();render();
+          if(res.ok)alert(res.added?"Added "+res.added+" workouts.":"Already up to date.");});
+      }
+      else if(a==="garminpass"){
+        const v=$("#gPass").value.trim();
+        if(!v)return;
+        S.garminPass=v;
+        garminSync().then(res=>{S.garminState=res;if(!res.ok&&res.reason==="badpass")S.garminPass=null;persist();render();});
+      }
       else if(a==="export"){doExport();}
       else if(a==="import"){doImport();}
       else if(a==="reset"){if(confirm("Erase ALL data for both of you on this phone?")){S=blank();persist();render();}}
@@ -1418,6 +1447,65 @@ function homeScreenTipHTML(){
     ' — it opens full screen with no address bar.'+
     '<div style="margin-top:8px"><button class="btn small" data-act="hidetip">Got it</button></div></div>';
 }
+/* ================= Garmin auto-sync =================
+   A scheduled job writes garmin.json beside this page; we read it on open.
+   Absent file = feature simply off. Encrypted file = we need the passphrase. */
+const GARMIN_URL="garmin.json";
+function b64bytes(str){
+  const bin=atob(str), u=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
+  return u;
+}
+async function garminDecrypt(blob,pass){
+  const km=await crypto.subtle.importKey("raw",new TextEncoder().encode(pass),"PBKDF2",false,["deriveKey"]);
+  const key=await crypto.subtle.deriveKey(
+    {name:"PBKDF2",salt:b64bytes(blob.salt),iterations:200000,hash:"SHA-256"},
+    km,{name:"AES-GCM",length:256},false,["decrypt"]);
+  const pt=await crypto.subtle.decrypt({name:"AES-GCM",iv:b64bytes(blob.iv)},key,b64bytes(blob.data));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+async function garminSync(){
+  let blob;
+  try{
+    const res=await fetch(GARMIN_URL+"?t="+Date.now(),{cache:"no-store"});
+    if(!res.ok)return {ok:false,reason:"nofile"};
+    blob=await res.json();
+  }catch(e){return {ok:false,reason:"nofile"};}
+  let payload=blob;
+  if(blob&&blob.enc){
+    if(!(window.crypto&&crypto.subtle))
+      return {ok:false,reason:"nocrypto",syncedAt:blob.syncedAt};
+    if(!S.garminPass)return {ok:false,reason:"needpass",syncedAt:blob.syncedAt};
+    try{payload=await garminDecrypt(blob,S.garminPass);}
+    catch(e){return {ok:false,reason:"badpass",syncedAt:blob.syncedAt};}
+  }
+  if(!payload||!payload.profiles)return {ok:false,reason:"badfile"};
+  let added=0;
+  for(const pid of ["a","b"]){
+    for(const it of payload.profiles[pid]||[]){
+      if(!it||!it.date||!(it.kcal>0))continue;
+      const id="garmin:"+it.date+":"+it.name+":"+it.kcal+":"+(it.mins||0);
+      const day=S.ex[pid][it.date]||(S.ex[pid][it.date]=[]);
+      if(day.some(x=>x.id===id))continue;
+      day.push({id:id,name:it.name,met:null,mins:it.mins||0,kcal:it.kcal,ts:Date.now(),src:"garmin"});
+      added++;
+    }
+  }
+  S.garminAt=payload.syncedAt||null; S.garminSeen=true;
+  if(added)persist(); else Store.save(S);
+  return {ok:true,added:added,syncedAt:S.garminAt};
+}
+function garminAgo(iso){
+  if(!iso)return "";
+  const mins=Math.round((Date.now()-new Date(iso).getTime())/60000);
+  if(!isFinite(mins))return "";
+  if(mins<2)return "just now";
+  if(mins<60)return mins+" min ago";
+  const h=Math.round(mins/60);
+  if(h<24)return h+(h===1?" hour ago":" hours ago");
+  const d=Math.round(h/24);
+  return d+(d===1?" day ago":" days ago");
+}
 /* ================= boot ================= */
 (async function boot(){
   await Store.init();
@@ -1425,5 +1513,11 @@ function homeScreenTipHTML(){
   if(saved&&saved.profiles&&saved.logs)S=migrate(saved);
   S.tab="today"; S.date=todayStr();
   render();
+  garminSync().then(res=>{
+    if(res.reason==="nofile")return;          // sync not set up; stay silent
+    S.garminState=res;
+    if(res.ok&&res.added)persist();
+    render();
+  }).catch(()=>{});
 })();
 </script>

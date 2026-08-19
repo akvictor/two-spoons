@@ -35,9 +35,15 @@ Garmin Connect on a computer exports your activities as CSV (**Activities → Al
 calories. Re-importing the same file is safe — entries are keyed by their contents, so
 nothing is duplicated.
 
-There is no live Garmin sync, and there cannot be one while the app stays serverless:
-Garmin's Health API needs an approved developer account plus a server to receive its
-webhooks, and none of that can live in a page running on the phone.
+For hands-off syncing, a scheduled GitHub Action logs in to Garmin every three hours
+and commits your recent activities as `garmin.json`; the app reads it on open and
+merges anything new. Because this repository is public the file is encrypted with a
+passphrase you choose, so only your two phones can read it. Setup is in
+[SETUP-GARMIN.md](SETUP-GARMIN.md).
+
+This uses a community library against Garmin's own web endpoints rather than their
+official Health API, which needs an approved business account and a server to receive
+webhooks. It works well in practice, and the CSV import remains as a fallback.
 
 ## Storage
 

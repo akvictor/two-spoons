@@ -1,2 +1,7 @@
 .DS_Store
 *.json.bak
+
+# never commit Garmin session tokens
+tokens/
+*.garth
+garmin_tokens*
