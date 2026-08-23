@@ -255,6 +255,7 @@ table.data,.num,.fname,.fsub{-webkit-user-select:text;user-select:text}
 #toast.show{transform:translate(-50%,0);opacity:1;visibility:visible;pointer-events:auto}
 #toast button{color:var(--bg);font-weight:var(--wt-h);text-decoration:underline;flex:none}
 @media (prefers-reduced-motion:reduce){#toast{transition:opacity .18s ease,visibility .18s}}
+.nowrap{white-space:nowrap;flex:none}
 .scanbox{position:relative;width:100%;aspect-ratio:4/3;border-radius:var(--rad-s);overflow:hidden;
   background:#000;border:var(--bw-s) solid var(--edge)}
 .scanbox video{width:100%;height:100%;object-fit:cover;display:block}
@@ -1889,7 +1890,7 @@ function scanHTML(){
   }
   h+='<div class="label" style="margin:16px 0 4px">Or type the number under the bars</div>'+
      '<div class="row"><input id="bcNum" inputmode="numeric" enterkeyhint="search" placeholder="8, 12 or 13 digits" autocomplete="off">'+
-     '<button class="btn small" id="bcGo">Look up</button></div>';
+     '<button class="btn small nowrap" id="bcGo">Look up</button></div>';
   return h;
 }
 function isFav(name){return S.favs[S.active].indexOf(name)>=0;}
