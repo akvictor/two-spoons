@@ -1535,6 +1535,14 @@ function foodListHTML(q){
    another company's server. */
 let onlineState={q:"",busy:false,err:"",results:null,retryQ:""};
 const OFF_URL="https://world.openfoodfacts.org/cgi/search.pl";
+const ENT={quot:'"',amp:"&",lt:"<",gt:">",apos:"'",nbsp:" "};
+function offText(str){
+  /* names in Open Food Facts often arrive with entities baked into the text */
+  return String(str||"")
+    .replace(/&#(\d+);/g,(m,d)=>String.fromCharCode(+d))
+    .replace(/&([a-zA-Z]+);/g,(m,w)=>ENT[w.toLowerCase()]!==undefined?ENT[w.toLowerCase()]:m)
+    .replace(/\s+/g," ").trim();
+}
 function offServing(n,sizeText){
   /* prefer the label's own serving; fall back to 100 g */
   const kS=n["energy-kcal_serving"];
@@ -1574,14 +1582,17 @@ async function lookupOnline(q){
     const j=await r.json();
     const out=[];
     for(const prod of (j.products||[])){
-      const nm=(prod.product_name||"").trim();
+      let nm=offText(prod.product_name);
       if(!nm) continue;
-      const per=offServing(prod.nutriments||{},prod.serving_size);
+      const per=offServing(prod.nutriments||{},offText(prod.serving_size));
       if(!per) continue;
-      const brand=(prod.brands||"").split(",")[0].trim();
-      out.push({name:brand&&nm.toLowerCase().indexOf(brand.toLowerCase())<0?brand+" "+nm:nm,
+      const brand=offText((prod.brands||"").split(",")[0]);
+      if(brand && nm.toLowerCase().indexOf(brand.toLowerCase())<0) nm=brand+" "+nm;
+      if(nm.length>52) nm=nm.slice(0,51).trim()+"\u2026";
+      if(out.some(x=>x.name.toLowerCase()===nm.toLowerCase())) continue;
+      out.push({name:nm,
         serving:per.serving,kcal:Math.round(per.kcal),p:Math.round(per.p),
-        c:Math.round(per.c),f:Math.round(per.f),ic:"\U0001F4E6",online:true});
+        c:Math.round(per.c),f:Math.round(per.f),ic:"📦",online:true});
       if(out.length>=12) break;
     }
     onlineState.results=out;
