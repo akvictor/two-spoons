@@ -50,7 +50,7 @@ say "Pushed to GitHub."
 
 # --- wait for the live site to catch up ---
 local_sum=$(shasum -a 256 index.html | awk '{print $1}')
-say -n "Waiting for the live site"
+printf "Waiting for the live site"
 for i in $(seq 1 30); do
   live_sum=$(curl -s -L "$URL" | shasum -a 256 | awk '{print $1}')
   if [ "$live_sum" = "$local_sum" ]; then
