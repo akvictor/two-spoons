@@ -144,18 +144,14 @@ h1,h3{font-weight:var(--wt-h)}
 .av.c1{background:var(--p1)} .av.c2{background:var(--p2)}
 .av img{width:100%;height:100%;object-fit:cover;display:block}
 /* top bar */
-.topbar{position:sticky;top:0;z-index:20;background:var(--bg);padding:10px 0 8px;display:flex;flex-direction:column;gap:10px}
+.topbar{position:sticky;top:0;z-index:20;background:var(--bg);
+  padding:calc(10px + env(safe-area-inset-top)) 0 8px;
+  display:flex;flex-direction:column;gap:10px}
 .datebar{display:flex;align-items:center;justify-content:space-between}
 .datebar .dnav{width:42px;height:42px;border-radius:var(--rad-s);border:var(--bw) solid var(--line);background:var(--card);font-size:19px;font-weight:var(--wt-h);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-s)}
 .datebar .dnav:active{transform:translateY(var(--press));box-shadow:none}
 .datebar .dlabel{font-weight:700;font-size:17px;text-align:center}
 .datebar .dsub{font-size:12.5px;color:var(--ink2);text-align:center}
-.who{display:flex;gap:8px}
-.who .chip{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:7px 10px;border-radius:var(--rad-s);border:var(--bw) solid var(--line);background:var(--card);font-weight:700;color:var(--ink2);min-width:0}
-.who .chip span.nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.who .chip.on{color:var(--ink)}
-.who .chip.on.c1{border-color:var(--p1);background:var(--p1-soft)}
-.who .chip.on.c2{border-color:var(--p2);background:var(--p2-soft)}
 /* ring */
 .ringwrap{display:flex;align-items:center;gap:16px}
 .ringnums .big{font-size:36px;font-weight:var(--wt-h);letter-spacing:-.02em;line-height:1.05}
@@ -199,7 +195,7 @@ h1,h3{font-weight:var(--wt-h)}
 .tabs button.on .ic{transform:scale(1.22) translateY(-1px)}
 /* sheet */
 .scrim{position:fixed;inset:0;background:var(--sheet-scrim);z-index:40;display:flex;align-items:flex-end;justify-content:center}
-.sheet{position:relative;overscroll-behavior:contain;background:var(--bg);width:100%;max-width:520px;max-height:88vh;border-radius:calc(var(--rad)*1.2) calc(var(--rad)*1.2) 0 0;border-top:var(--bw) solid var(--line);padding:16px 16px calc(16px + env(safe-area-inset-bottom));overflow-y:auto}
+.sheet{position:relative;overscroll-behavior:contain;background:var(--bg);width:100%;max-width:520px;max-height:calc(88vh - env(safe-area-inset-top));border-radius:calc(var(--rad)*1.2) calc(var(--rad)*1.2) 0 0;border-top:var(--bw) solid var(--line);padding:16px 16px calc(16px + env(safe-area-inset-bottom));overflow-y:auto}
 .sheet h3{font-size:18px;margin-bottom:12px;padding-right:42px}
 .xclose{position:absolute;top:10px;right:12px;width:34px;height:34px;border-radius:50%;background:var(--line2);color:var(--ink2);font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;z-index:2}
 .grab{width:36px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 12px}
@@ -256,11 +252,11 @@ table.data,.num,.fname,.fsub{-webkit-user-select:text;user-select:text}
 #toast button{color:var(--bg);font-weight:var(--wt-h);text-decoration:underline;flex:none}
 @media (prefers-reduced-motion:reduce){#toast{transition:opacity .18s ease,visibility .18s}}
 .whorow{display:flex;gap:6px;margin:2px 0 10px}
-.who{display:flex;align-items:center;gap:7px;flex:1;justify-content:center;padding:7px 10px;
+.whobtn{display:flex;align-items:center;gap:7px;flex:1;justify-content:center;padding:7px 10px;
   border:var(--bw-s) solid var(--edge);border-radius:999px;background:var(--card);
   font-size:13px;font-weight:var(--wt);color:var(--ink3)}
-.who.on{background:var(--card2);color:var(--ink);border-color:var(--ink3)}
-.who .av{flex:none}
+.whobtn.on{background:var(--card2);color:var(--ink);border-color:var(--ink3)}
+.whobtn .av{flex:none}
 .glass[disabled]{opacity:.85}
 .eicwrap{width:34px;height:34px;border-radius:8px;overflow:hidden;flex:none;padding:0;display:block}
 .eicwrap img{width:100%;height:100%;object-fit:cover;display:block}
@@ -1415,7 +1411,7 @@ function viewingPartner(){ return S.active!==S.me; }
 function whoSwitchHTML(){
   if(!S.paired && !anyData(partnerOf(S.me))) return "";
   const me=meProf(), them=themProf();
-  const chip=(pr,on)=>'<button class="who'+(on?" on":"")+'" data-act="who" data-pid="'+pr.id+'">'+
+  const chip=(pr,on)=>'<button class="whobtn'+(on?" on":"")+'" data-act="who" data-pid="'+pr.id+'">'+
     avatarHTML(pr,22)+'<span>'+esc(pr.name||(pr.id===S.me?"You":"Them"))+'</span></button>';
   return '<div class="whorow">'+chip(me,S.active===S.me)+chip(them,S.active!==S.me)+'</div>';
 }
@@ -3068,7 +3064,7 @@ function setupHTML(){
   return setupWelcomeHTML();
 }
 function setupShell(inner,back){
-  return '<div style="padding:22px 0 8px;text-align:center">'+
+  return '<div style="padding:calc(22px + env(safe-area-inset-top)) 0 8px;text-align:center">'+
     '<div style="font-size:40px;line-height:1">🥄🥄</div>'+
     '<h1 style="font-size:24px;letter-spacing:-.02em">Two Spoons</h1></div>'+
     (back?'<button class="btn small" data-s="'+back+'" style="margin-bottom:12px">‹ Back</button>':"")+
