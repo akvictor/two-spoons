@@ -59,6 +59,19 @@ This uses a community library against Garmin's own web endpoints rather than the
 official Health API, which needs an approved business account and a server to receive
 webhooks. It works well in practice, and the CSV import remains as a fallback.
 
+## Shipping a change
+
+Edit `index.html`, then from this folder:
+
+```sh
+./ship.sh "what you changed"
+```
+
+It checks the app still parses (and refuses to publish a broken file), commits, pushes,
+and waits until the live site is actually serving your change before it says done.
+The message is optional. Running it with nothing changed just re-confirms live matches
+local.
+
 ## Storage
 
 There is no server, so data stays on the device. Persistence tries three tiers in order
