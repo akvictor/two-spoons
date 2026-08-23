@@ -43,6 +43,13 @@ Inspired by the parts of LoseIt! and Cal AI that actually get used day to day.
   kway chap, zi char, dim sum, cai fan sides, the full kopi/teh matrix, nyonya kueh) plus
   Japanese, Korean, Thai, Vietnamese, Indian, Malay, Taiwanese and Western staples, cafe
   brunch, everyday groceries and condiments. Paired with a 28-activity exercise database.
+- **Barcode scanning.** Add food → **Scan** opens the camera; hold a packaged product's
+  barcode in the box and it looks the product up and drops it into the normal portion
+  picker. Nothing the camera sees leaves the phone — only the digits are sent.
+  Safari ships the browser's own barcode API switched off, so the app decodes EAN-13,
+  EAN-8 and UPC-A itself and uses the native detector only where one actually works.
+  You can also just type the number under the bars, which needs no camera permission
+  at all.
 - **Online lookup when something isn't there.** Search, and under the results there's a
   button that asks [Open Food Facts](https://world.openfoodfacts.org) — a free, public
   food database needing no account or key. It only runs when you tap it, because tapping

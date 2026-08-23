@@ -255,6 +255,11 @@ table.data,.num,.fname,.fsub{-webkit-user-select:text;user-select:text}
 #toast.show{transform:translate(-50%,0);opacity:1;visibility:visible;pointer-events:auto}
 #toast button{color:var(--bg);font-weight:var(--wt-h);text-decoration:underline;flex:none}
 @media (prefers-reduced-motion:reduce){#toast{transition:opacity .18s ease,visibility .18s}}
+.scanbox{position:relative;width:100%;aspect-ratio:4/3;border-radius:var(--rad-s);overflow:hidden;
+  background:#000;border:var(--bw-s) solid var(--edge)}
+.scanbox video{width:100%;height:100%;object-fit:cover;display:block}
+.scanaim{position:absolute;left:8%;right:8%;top:38%;height:24%;border:2px solid rgba(255,255,255,.9);
+  border-radius:8px;box-shadow:0 0 0 100vmax rgba(0,0,0,.35);pointer-events:none}
 .cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));grid-auto-rows:1fr;gap:6px;margin:2px 0 4px}
 .cat{display:flex;align-items:center;gap:8px;min-height:46px;border:var(--bw-s) solid var(--edge);
   border-radius:var(--rad-s);padding:8px 10px;background:var(--card);text-align:left;color:var(--ink)}
@@ -1432,6 +1437,7 @@ function macroHTML(name,v,t,cls){
 let sheetMeal="Lunch", sheetTab="search", pickedFood=null, pickedQty=1, quickParsed=null;
 function openAdd(meal){
   sheetMeal=meal||guessMeal(); sheetTab="search"; pickedFood=null; pickedQty=1; quickParsed=null; foodCat=null; onlineState={q:"",busy:false,err:"",results:null};
+  stopScan(); scanState={on:false,err:"",code:"",busy:false,notFound:false,noData:""};
   openSheet(addSheetHTML()); bindAddSheet();
 }
 function guessMeal(){const h=new Date().getHours();return h<10.5?"Breakfast":h<15?"Lunch":h<21?"Dinner":"Snacks";}
@@ -1448,20 +1454,22 @@ function openSheet(html){
   document.addEventListener("keydown",onSheetKey);
   document.body.appendChild(d);
 }
-function closeSheet(){const s=$("#scrim");if(s)s.remove();document.removeEventListener("keydown",onSheetKey);}
+function closeSheet(){stopScan();const s=$("#scrim");if(s)s.remove();document.removeEventListener("keydown",onSheetKey);}
 function addSheetHTML(){
   return '<h3>Add to <select id="mealSel" style="width:auto;display:inline-block;padding:4px 8px;font-weight:700">'+
     MEALS.map(m=>'<option '+(m===sheetMeal?"selected":"")+'>'+m+'</option>').join("")+'</select></h3>'+
     '<div class="seg">'+
       '<button data-st="search" class="'+(sheetTab==="search"?"on":"")+'">Search</button>'+
       '<button data-st="quick" class="'+(sheetTab==="quick"?"on":"")+'">Describe</button>'+
-      '<button data-st="fast" class="'+(sheetTab==="fast"?"on":"")+'">Quick add</button>'+
+      '<button data-st="fast" class="'+(sheetTab==="fast"?"on":"")+'">Quick</button>'+
       '<button data-st="custom" class="'+(sheetTab==="custom"?"on":"")+'">Custom</button>'+
+      '<button data-st="scan" class="'+(sheetTab==="scan"?"on":"")+'">Scan</button>'+
     '</div><div id="sheetBody">'+sheetBodyHTML()+'</div>';
 }
 function sheetBodyHTML(){
+  if(pickedFood) return pickHTML();
+  if(sheetTab==="scan") return scanHTML();
   if(sheetTab==="search"){
-    if(pickedFood) return pickHTML();
     return '<input id="foodQ" placeholder="Search food… (e.g. chicken rice, kopi c)" autocomplete="off">'+
       '<div id="foodList">'+foodListHTML("")+'</div>';
   }
@@ -1527,6 +1535,133 @@ function foodListHTML(q){
   }
   return html;
 }
+/* ================= barcode =================
+   EAN-13, EAN-8 and UPC-A, decoded here rather than by the browser: Safari ships
+   BarcodeDetector switched off, so on an iPhone the native one isn't there. Where a
+   working native detector exists we use it, because it's faster and reads more
+   symbologies; otherwise this runs.
+
+   A barcode is a row of bars whose *relative* widths carry the digits. So: take one
+   row of pixels, split it into runs of dark and light, and match each group of four
+   runs against the twelve known digit patterns. */
+const EAN_L=[[3,2,1,1],[2,2,2,1],[2,1,2,2],[1,4,1,1],[1,1,3,2],
+             [1,2,3,1],[1,1,1,4],[1,3,1,2],[1,2,1,3],[3,1,1,2]];
+const EAN_G=EAN_L.map(p=>p.slice().reverse());
+/* which of the six left digits use the G set spells out the 13th (leading) digit */
+const EAN_PAR=["000000","001011","001101","001110","010011",
+               "011001","011100","010101","010110","011010"];
+
+function bcRuns(gray){
+  let mn=255,mx=0;
+  for(let i=0;i<gray.length;i++){const v=gray[i];if(v<mn)mn=v;if(v>mx)mx=v;}
+  if(mx-mn<48)return null;                      /* too flat to be a barcode */
+  const th=(mn+mx)/2, runs=[];
+  let cur=gray[0]<th, len=1;
+  for(let i=1;i<gray.length;i++){
+    const dark=gray[i]<th;
+    if(dark===cur)len++; else {runs.push(len);cur=dark;len=1;}
+  }
+  runs.push(len);
+  return {runs:runs,firstDark:gray[0]<th};
+}
+function bcDigit(runs,i,sets){
+  let total=0;
+  for(let k=0;k<4;k++){ if(runs[i+k]===undefined)return null; total+=runs[i+k]; }
+  const unit=total/7;
+  if(unit<=0)return null;
+  let best=null,bestErr=1.0;                    /* total module error allowed over 4 runs */
+  for(let s=0;s<sets.length;s++)
+    for(let d=0;d<10;d++){
+      let err=0;
+      for(let k=0;k<4;k++)err+=Math.abs(runs[i+k]/unit-sets[s][d][k]);
+      if(err<bestErr){bestErr=err;best={d:d,set:s};}
+    }
+  return best;
+}
+function bcGuard(runs,i,n){                     /* n equal-width runs */
+  let total=0;
+  for(let k=0;k<n;k++){ if(runs[i+k]===undefined)return 0; total+=runs[i+k]; }
+  const unit=total/n;
+  if(unit<=0)return 0;
+  for(let k=0;k<n;k++) if(Math.abs(runs[i+k]/unit-1)>0.45)return 0;
+  return unit;
+}
+function bcCheck(s){
+  const n=s.length, w=(n===13)?[1,3]:[3,1];
+  let sum=0;
+  for(let i=0;i<n-1;i++)sum+=(+s[i])*w[i%2];
+  return (10-(sum%10))%10===+s[n-1];
+}
+function bcAt(runs,firstDark,i){
+  /* a barcode starts on a dark bar */
+  const dark=firstDark?(i%2===0):(i%2===1);
+  if(!dark)return null;
+  const unit=bcGuard(runs,i,3);
+  if(!unit)return null;
+
+  for(const spec of [{left:6,total:13},{left:4,total:8}]){
+    const L=spec.left;
+    let j=i+3, digits=[], parity="", ok=true;
+    for(let d=0;d<L;d++){
+      const m=bcDigit(runs,j,spec.total===13?[EAN_L,EAN_G]:[EAN_L]);
+      if(!m){ok=false;break;}
+      digits.push(m.d); parity+=m.set; j+=4;
+    }
+    if(!ok)continue;
+    if(!bcGuard(runs,j,5))continue;             /* centre guard */
+    j+=5;
+    for(let d=0;d<L;d++){
+      const m=bcDigit(runs,j,[EAN_L]);          /* right digits: same widths, inverted */
+      if(!m){ok=false;break;}
+      digits.push(m.d); j+=4;
+    }
+    if(!ok)continue;
+    if(!bcGuard(runs,j,3))continue;             /* end guard */
+
+    let code;
+    if(spec.total===13){
+      const first=EAN_PAR.indexOf(parity);
+      if(first<0)continue;
+      code=String(first)+digits.join("");
+    } else code=digits.join("");
+    if(code.length===spec.total&&bcCheck(code))return code;
+  }
+  return null;
+}
+function bcScanLine(gray){
+  const r=bcRuns(gray);
+  if(!r)return null;
+  for(let i=0;i<r.runs.length-40;i++){
+    const hit=bcAt(r.runs,r.firstDark,i);
+    if(hit)return hit;
+  }
+  /* the label may be upside down */
+  const rev=r.runs.slice().reverse();
+  const revFirstDark=(r.runs.length%2===1)?r.firstDark:!r.firstDark;
+  for(let i=0;i<rev.length-40;i++){
+    const hit=bcAt(rev,revFirstDark,i);
+    if(hit)return hit;
+  }
+  return null;
+}
+function bcScanImage(data,w,h,lines){
+  /* sample rows across the middle of the frame — a barcode only needs one good one */
+  const n=lines||15, out={};
+  for(let k=0;k<n;k++){
+    const y=Math.floor(h*(0.2+0.6*(k/(n-1||1))));
+    const gray=new Uint8Array(w);
+    for(let x=0;x<w;x++){
+      const p=(y*w+x)*4;
+      gray[x]=(data[p]*77+data[p+1]*151+data[p+2]*28)>>8;
+    }
+    const code=bcScanLine(gray);
+    if(code){out[code]=(out[code]||0)+1;}
+  }
+  let best=null,bestN=0;
+  for(const c in out) if(out[c]>bestN){best=c;bestN=out[c];}
+  return best?{code:best,lines:bestN}:null;
+}
+
 /* ================= online lookup =================
    Open Food Facts: free, no API key, sends Access-Control-Allow-Origin: *.
    Packaged and barcoded products, contributed by the public — good for a snack
@@ -1622,6 +1757,140 @@ function paintOnline(){
   el.innerHTML=onlineHTML();
   bindFoodRows();
   el.querySelectorAll("[data-online]").forEach(b=>b.onclick=()=>lookupOnline(b.dataset.online));
+}
+/* ---- camera scanning + barcode lookup ---- */
+let scanStream=null, scanTimer=null, scanBusy=false, nativeBCd;
+let scanState={on:false,err:"",code:"",busy:false,notFound:false,noData:""};
+function nativeBC(){
+  if(nativeBCd!==undefined)return nativeBCd;
+  try{
+    nativeBCd=("BarcodeDetector" in window)
+      ? new window.BarcodeDetector({formats:["ean_13","ean_8","upc_a","upc_e"]}) : null;
+  }catch(e){nativeBCd=null;}
+  return nativeBCd;
+}
+function stopScan(){
+  if(scanTimer){clearInterval(scanTimer);scanTimer=null;}
+  if(scanStream){scanStream.getTracks().forEach(t=>t.stop());scanStream=null;}
+  scanState.on=false; scanBusy=false;
+}
+async function startScan(){
+  scanState.err="";scanState.notFound=false;scanState.noData="";
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    scanState.err="This browser won't give a web page the camera. Type the number instead.";
+    refreshSheet();return;
+  }
+  try{
+    scanStream=await navigator.mediaDevices.getUserMedia(
+      {video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:720}},audio:false});
+  }catch(e){
+    scanState.err=(e&&e.name==="NotAllowedError")
+      ? "Camera permission was turned down. Allow it in your browser settings, or type the number below."
+      : (e&&e.name==="NotFoundError")
+      ? "No camera found on this device. Type the number below."
+      : "Couldn't start the camera. Type the number below.";
+    refreshSheet();return;
+  }
+  scanState.on=true; refreshSheet();
+  const v=$("#scanVid");
+  if(!v){stopScan();return;}
+  v.srcObject=scanStream;
+  v.setAttribute("playsinline","");v.muted=true;
+  try{ await v.play(); }catch(e){}
+  const cv=document.createElement("canvas");
+  scanTimer=setInterval(()=>scanTick(v,cv),120);
+}
+async function scanTick(v,cv){
+  if(scanBusy||!scanState.on)return;
+  if(!v.videoWidth)return;
+  scanBusy=true;
+  try{
+    const W=Math.min(640,v.videoWidth);
+    const H=Math.round(v.videoHeight*(W/v.videoWidth));
+    cv.width=W;cv.height=H;
+    const cx=cv.getContext("2d",{willReadFrequently:true});
+    cx.drawImage(v,0,0,W,H);
+    let code=null;
+    const nd=nativeBC();
+    if(nd){
+      try{ const hits=await nd.detect(cv); if(hits&&hits.length)code=hits[0].rawValue; }catch(e){}
+    }
+    if(!code){
+      const id=cx.getImageData(0,0,W,H);
+      const hit=bcScanImage(id.data,W,H,15);
+      if(hit)code=hit.code;
+    }
+    if(code&&/^\d{8}$|^\d{12,13}$/.test(code)){
+      stopScan();
+      if(navigator.vibrate)try{navigator.vibrate(40);}catch(e){}
+      lookupBarcode(code);
+    }
+  }catch(e){}
+  scanBusy=false;
+}
+async function lookupBarcode(code){
+  scanState={on:false,err:"",code:code,busy:true,notFound:false,noData:""};
+  sheetTab="scan"; refreshSheet();
+  const tryCodes=[code];
+  if(code.length===13&&code[0]==="0")tryCodes.push(code.slice(1));  /* UPC-A read as EAN-13 */
+  if(code.length===12)tryCodes.push("0"+code);
+  try{
+    let prod=null;
+    for(const c of tryCodes){
+      const url="https://world.openfoodfacts.org/api/v2/product/"+encodeURIComponent(c)+
+        ".json?fields=product_name,brands,nutriments,serving_size";
+      const r=await offFetch(url,4);
+      const j=await r.json();
+      if(j&&j.status===1&&j.product){prod=j.product;break;}
+    }
+    if(!prod){ scanState.notFound=true; }
+    else{
+      let nm=offText(prod.product_name);
+      const brand=offText((prod.brands||"").split(",")[0]);
+      if(brand&&nm.toLowerCase().indexOf(brand.toLowerCase())<0)nm=(brand+" "+nm).trim();
+      if(!nm)nm="Barcode "+code;
+      if(nm.length>52)nm=nm.slice(0,51).trim()+"…";
+      const per=offServing(prod.nutriments||{},offText(prod.serving_size));
+      if(!per) scanState.noData=nm;
+      else{
+        pickedFood={name:nm,serving:per.serving,kcal:Math.round(per.kcal),p:Math.round(per.p),
+          c:Math.round(per.c),f:Math.round(per.f),ic:"📦",online:true};
+        pickedQty=1; scanState.busy=false; refreshSheet(); return;
+      }
+    }
+  }catch(e){
+    scanState.err="Couldn't reach Open Food Facts. It goes down often — tap Try again in a moment.";
+  }
+  scanState.busy=false; refreshSheet();
+}
+function scanHTML(){
+  if(scanState.busy)
+    return '<p class="tiny muted" style="text-align:center;padding:18px">Looking up <b class="num">'+
+      esc(scanState.code)+'</b>…</p>';
+  let h="";
+  if(scanState.err)
+    h+='<p class="tiny muted" style="padding:8px 2px">'+esc(scanState.err)+'</p>'+
+       (scanState.code?'<div class="row"><button class="btn small grow" id="bcRetry">Try again</button></div>':"");
+  if(scanState.notFound)
+    h+='<p class="tiny muted" style="padding:8px 2px">Nothing filed under <b class="num">'+esc(scanState.code)+
+       '</b>. Open Food Facts is filled in by the public, so plenty of local products simply aren\'t there yet — '+
+       'Custom takes a minute and keeps it for good.</p>';
+  if(scanState.noData)
+    h+='<p class="tiny muted" style="padding:8px 2px">Found “'+esc(scanState.noData)+
+       '”, but nobody has filled in its calories. Custom will do it.</p>';
+  if(!scanState.on){
+    h+='<div class="row" style="margin-top:6px"><button class="btn primary grow" id="scanStart">Open the camera</button></div>'+
+       '<p class="tiny muted" style="margin:8px 2px 0">Nothing the camera sees leaves your phone — only the barcode number '+
+       'is sent, to Open Food Facts. Best on packaged food; hawker food won\'t have one.</p>';
+  }else{
+    h+='<div class="scanbox"><video id="scanVid" playsinline muted autoplay></video><div class="scanaim"></div></div>'+
+       '<p class="tiny muted" style="text-align:center;margin:8px 0 0">Hold the barcode inside the box — fill the width if you can.</p>'+
+       '<div class="row" style="margin-top:8px"><button class="btn small grow" id="scanStop">Stop the camera</button></div>';
+  }
+  h+='<div class="label" style="margin:16px 0 4px">Or type the number under the bars</div>'+
+     '<div class="row"><input id="bcNum" inputmode="numeric" enterkeyhint="search" placeholder="8, 12 or 13 digits" autocomplete="off">'+
+     '<button class="btn small" id="bcGo">Look up</button></div>';
+  return h;
 }
 function isFav(name){return S.favs[S.active].indexOf(name)>=0;}
 function foodRowHTML(f){
@@ -2687,7 +2956,9 @@ function bindMain(){
 }
 function bindAddSheet(){
   $("#mealSel").onchange=e=>{sheetMeal=e.target.value;};
-  document.querySelectorAll("[data-st]").forEach(b=>b.onclick=()=>{sheetTab=b.dataset.st;pickedFood=null;refreshSheet();});
+  document.querySelectorAll("[data-st]").forEach(b=>b.onclick=()=>{
+    if(b.dataset.st!=="scan")stopScan();
+    sheetTab=b.dataset.st;pickedFood=null;refreshSheet();});
   bindSheetBody();
 }
 function refreshSheet(){
@@ -2696,6 +2967,21 @@ function refreshSheet(){
   sb.innerHTML=sheetBodyHTML();bindSheetBody();
 }
 function bindSheetBody(){
+  if($("#scanStart"))$("#scanStart").onclick=()=>startScan();
+  if($("#scanStop"))$("#scanStop").onclick=()=>{stopScan();refreshSheet();};
+  if($("#bcRetry"))$("#bcRetry").onclick=()=>lookupBarcode(scanState.code);
+  if($("#bcGo")){
+    const go=()=>{
+      const v=($("#bcNum").value||"").replace(/\D/g,"");
+      if(!/^\d{8}$|^\d{12,13}$/.test(v)){
+        scanState.err="A barcode is 8, 12 or 13 digits — that one is "+v.length+".";
+        scanState.code="";refreshSheet();return;
+      }
+      lookupBarcode(v);
+    };
+    $("#bcGo").onclick=go;
+    $("#bcNum").onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();go();}};
+  }
   const q=$("#foodQ");
   if(q){q.oninput=()=>{if(q.value.trim())foodCat=null;
     if(q.value.trim()!==onlineState.q)onlineState={q:"",busy:false,err:"",results:null};$("#foodList").innerHTML=foodListHTML(q.value.trim());bindFoodRows();};bindFoodRows();
