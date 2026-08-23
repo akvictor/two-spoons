@@ -1188,7 +1188,7 @@ const Store={
   saving(){return this.tier!=="memory";},
   where(){return this.tier==="local"?"this device":this.tier==="idb"?"this device (browser database)":"backup files only";}
 };
-function persist(){S.dirtyAt=Date.now();Store.save(S);}
+function persist(){S.dirtyAt=Date.now();Store.save(S);if(typeof syncSoon==="function")syncSoon();}
 
 /* --- undo: snapshot the day before a change, offer it back briefly --- */
 let undoState=null, undoTimer=null;
@@ -1262,6 +1262,9 @@ function migrate(st){
   const base=blank();
   st.v=3;
   if(!st.me)st.me="a";
+  /* sync arrived after these two had already paired: the one who started the journey
+     mints the credentials, and the other picks them up from a fresh invite */
+  if(st.setup&&!st.sync&&st.me==="a"&&window.crypto&&crypto.getRandomValues)st.sync=newSyncCreds();
   st.journey=st.journey||{start:null};
   if(st.setup&&!st.journey.start){
     let first=null;
@@ -1360,7 +1363,7 @@ function render(){
   app.innerHTML=html;
   bindMain();
   paintPhotos();
-  if(S.tab==="settings")paintPhotoUsage();
+  if(S.tab==="settings"){paintPhotoUsage();bindSyncCard();}
 }
 function topbarHTML(){
   if(S.tab==="settings"||S.tab==="us"){
@@ -2734,6 +2737,49 @@ function milestones(){
   ];
 }
 /* ================= Settings ================= */
+function syncCardHTML(){
+  const sy=S.sync||{};
+  if(!sy.room)
+    return '<section class="card"><div class="label" style="margin-bottom:8px">Automatic sync</div>'+
+      '<p class="tiny muted">Ask '+esc(themProf().name||"your partner")+' to set up the relay on their phone '+
+      'and send you a fresh invite — importing it switches sync on here automatically.</p></section>';
+  const live=syncReady()&&sy.on!==false;
+  return '<section class="card"><div class="label" style="margin-bottom:8px">Automatic sync</div>'+
+   '<div class="row" style="justify-content:space-between;margin-bottom:8px"><span class="tiny">'+
+     (live?'Syncing with <b>'+esc(themProf().name||"your partner")+'</b>':'Off')+'</span>'+
+     '<span class="pill '+(live&&!sy.err?"good":sy.err?"over":"")+'">'+
+       (sy.err?"Trouble":live?"On":"Off")+'</span></div>'+
+   (sy.err?'<p class="tiny muted" style="margin:0 0 8px">'+esc(sy.err)+'</p>':"")+
+   (live?'<p class="tiny muted" style="margin:0 0 8px">Yours went up '+syncAgeLabel(sy.at)+
+      '. Theirs was written '+syncAgeLabel(sy.theirAt)+'.</p>':"")+
+   '<div class="frow"><div><div class="flabel">Your relay address</div>'+
+     '<input id="syUrl" placeholder="https://two-spoons-sync.you.workers.dev" value="'+esc(sy.url||"")+'"></div></div>'+
+   '<p class="tiny muted" style="margin:-4px 0 10px">Set this up once — SETUP-SYNC.md in the project walks through it. '+
+     'Then send '+esc(themProf().name||"your partner")+' a fresh invite and her phone picks it up on its own.</p>'+
+   '<div class="row"><button class="btn small grow" id="sySave">Save</button>'+
+     '<button class="btn small grow" id="syNow">Sync now</button>'+
+     '<button class="btn small" id="syToggle">'+(sy.on===false?"Turn on":"Turn off")+'</button></div>'+
+   '<p class="tiny muted" style="margin:10px 0 0">Everything is encrypted on this phone before it goes up. '+
+     'The relay holds bytes it cannot read; the key only ever travels inside an invite.</p>'+
+   '</section>';
+}
+function bindSyncCard(){
+  if($("#sySave"))$("#sySave").onclick=()=>{
+    const v=($("#syUrl").value||"").trim().replace(/\/+$/,"");
+    if(v&&!/^https:\/\/[^\s]+$/.test(v)&&!/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/.test(v)){
+      alert("That should be the https:// address Cloudflare gave you.");return;}
+    S.sync.url=v; S.sync.err=""; lastPushed="";
+    persist(); syncStart(); render();
+  };
+  if($("#syNow"))$("#syNow").onclick=async()=>{
+    $("#syNow").textContent="Syncing…";
+    await syncNow(false);
+    render();
+  };
+  if($("#syToggle"))$("#syToggle").onclick=()=>{
+    S.sync.on=(S.sync.on===false); persist(); syncStart(); render();
+  };
+}
 function settingsHTML(){
   let html="";
   const me=meProf(), them=themProf();
@@ -2773,6 +2819,7 @@ function settingsHTML(){
     }
     html+='</section>';
   }
+  html+=syncCardHTML();
   html+='<section class="card"><div class="label" style="margin-bottom:8px">Saving</div>'+
    '<div class="row" style="justify-content:space-between"><span class="tiny">Kept in <b>'+Store.where()+'</b></span>'+
    '<span class="pill '+(Store.saving()?"good":"over")+'">'+(Store.saving()?"Saving on":"Not saving")+'</span></div>'+
@@ -2905,6 +2952,7 @@ function pickPhoto(pid,done){
 function exportableState(){
   const copy=JSON.parse(JSON.stringify(S));
   delete copy.aiKey; delete copy.garminPass; delete copy.garminState;
+  if(copy.sync)delete copy.sync.up;   /* which photos this phone already uploaded */
   return copy;
 }
 function backupJSON(){return JSON.stringify({app:"twospoons",exportedAt:new Date().toISOString(),state:exportableState()});}
@@ -2998,6 +3046,10 @@ function doImport(){
     if(!st.logs||!st.profiles){alert("That doesn't look like a Two Spoons export.");return;}
     mergeFrom(st);
     S.paired=true;
+    if(st.sync&&st.sync.room&&st.sync.key){       /* adopt their relay so sync starts on its own */
+      S.sync=Object.assign({},st.sync,{up:{},err:"",at:0,theirAt:0,on:true});
+      lastPushed="";
+    }
     persist();
     importPhotos(obj).then(n=>{
       closeSheet();render();
@@ -3127,7 +3179,7 @@ function bindSetup(){
         if($("#pName")&&$("#pName").value.trim())themProf().name=$("#pName").value.trim();
         S.setupStep=a;persist();render();
       }
-      else if(a==="start"){S.me="a";S.active="a";S.setupStep="you";render();}
+      else if(a==="start"){S.me="a";S.active="a";if(!S.sync)S.sync=newSyncCreds();S.setupStep="you";render();}
       else if(a==="join"){S.setupStep="join";render();}
       else if(a==="joinSkip"){S.me="b";S.active="b";S.setupStep="you";render();}
       else if(a==="joinNext"){
@@ -3436,6 +3488,159 @@ function homeScreenTipHTML(){
     ' — it opens full screen with no address bar.'+
     '<div style="margin-top:8px"><button class="btn small" data-act="hidetip">Got it</button></div></div>';
 }
+/* ================= automatic sync =================
+   A tiny relay of your own holds two blobs — one per phone — and the meal photos.
+   Everything is encrypted here, on the phone, before it goes anywhere: the relay
+   stores bytes it has no way to read. The key lives only on your two devices and
+   travels once, inside the invite.
+
+   Each phone writes only its own slot and reads only the other's, so the two can
+   never overwrite each other and there is nothing to resolve. */
+const SYNC_PULL_MS=45000, SYNC_PUSH_DEBOUNCE=15000;
+let syncTimer=null, syncPushTimer=null, syncBusy=false, lastPushed="";
+
+function syncReady(){
+  return !!(S.sync&&S.sync.url&&S.sync.room&&S.sync.key&&window.crypto&&crypto.subtle);
+}
+function newSyncCreds(){
+  const r=new Uint8Array(16), k=new Uint8Array(32);
+  crypto.getRandomValues(r); crypto.getRandomValues(k);
+  return {url:"",room:hexOf(r),key:bytesB64(k),on:true};
+}
+function hexOf(u8){ return [...u8].map(b=>b.toString(16).padStart(2,"0")).join(""); }
+function bytesB64(u8){ let s="";for(const b of u8)s+=String.fromCharCode(b);return btoa(s); }
+async function syncCryptoKey(){
+  return crypto.subtle.importKey("raw",b64bytes(S.sync.key),{name:"AES-GCM"},false,["encrypt","decrypt"]);
+}
+async function syncSeal(text){
+  const key=await syncCryptoKey(), iv=new Uint8Array(12);
+  crypto.getRandomValues(iv);
+  const ct=await crypto.subtle.encrypt({name:"AES-GCM",iv:iv},key,new TextEncoder().encode(text));
+  return JSON.stringify({iv:bytesB64(iv),data:bytesB64(new Uint8Array(ct))});
+}
+async function syncOpen(text){
+  const blob=JSON.parse(text), key=await syncCryptoKey();
+  const pt=await crypto.subtle.decrypt({name:"AES-GCM",iv:b64bytes(blob.iv)},key,b64bytes(blob.data));
+  return new TextDecoder().decode(pt);
+}
+function syncURL(kind,id){
+  return S.sync.url.replace(/\/+$/,"")+"/"+kind+"/"+S.sync.room+"/"+encodeURIComponent(id);
+}
+async function syncFetch(url,opts){
+  const c=new AbortController(), t=setTimeout(()=>c.abort(),15000);
+  try{ return await fetch(url,Object.assign({signal:c.signal,cache:"no-store"},opts||{})); }
+  finally{ clearTimeout(t); }
+}
+/* what this phone puts up: its own view of everything, plus which photos it holds */
+async function syncPush(){
+  const mine=[];
+  for(const pid of ["a","b"])
+    for(const d in (S.logs[pid]||{}))
+      for(const e of S.logs[pid][d]) if(e.photo) mine.push(e.id);
+  /* Compare only what a partner would actually notice. The saved state also carries
+     bookkeeping — when it was last touched, last synced — which changes on every save,
+     so comparing the whole thing would upload on every pass and burn the write budget
+     for nothing. */
+  const sig=JSON.stringify({logs:S.logs,ex:S.ex,water:S.water,weights:S.weights,
+    profiles:S.profiles,custom:S.custom,savedMeals:S.savedMeals,favs:S.favs,
+    journey:S.journey,photos:mine});
+  if(sig===lastPushed) return {skipped:true};
+  const payload=JSON.stringify({v:1,who:S.me,at:Date.now(),state:exportableState(),photos:mine});
+  const r=await syncFetch(syncURL("s",S.me),{method:"PUT",body:await syncSeal(payload)});
+  if(!r.ok) throw new Error("upload refused ("+r.status+")");
+  lastPushed=sig;
+
+  /* photos are written once and never change, so only the new ones go up */
+  S.sync.up=S.sync.up||{};
+  for(const id of mine){
+    if(S.sync.up[id])continue;
+    let data=photoCache[id];
+    if(data===undefined){ try{ data=await PhotoStore.get(id); }catch(e){ data=null; } }
+    if(!data)continue;
+    try{
+      const pr=await syncFetch(syncURL("p",id),{method:"PUT",body:await syncSeal(data)});
+      if(pr.ok)S.sync.up[id]=1;
+    }catch(e){}
+  }
+  return {pushed:true};
+}
+async function syncPull(){
+  const them=partnerOf(S.me);
+  const r=await syncFetch(syncURL("s",them));
+  if(r.status===404) return {none:true};
+  if(!r.ok) throw new Error("download refused ("+r.status+")");
+  let obj;
+  try{ obj=JSON.parse(await syncOpen(await r.text())); }
+  catch(e){ throw new Error("badkey"); }
+  if(!obj||!obj.state) return {none:true};
+
+  mergeFrom(obj.state);
+  S.paired=true;
+
+  let got=0;
+  for(const id of (obj.photos||[])){
+    if(photoCache[id])continue;
+    let have=null;
+    try{ have=await PhotoStore.get(id); }catch(e){}
+    if(have){ photoCache[id]=have; continue; }
+    if(!findEntry(id))continue;              /* only photos for entries we now hold */
+    try{
+      const pr=await syncFetch(syncURL("p",id));
+      if(!pr.ok)continue;
+      const data=await syncOpen(await pr.text());
+      if(typeof data==="string"&&data.indexOf("data:image/")===0){
+        await PhotoStore.put(id,data); photoCache[id]=data;
+        const ent=findEntry(id); if(ent)ent.photo=1;
+        got++;
+      }
+    }catch(e){}
+  }
+  return {merged:true,photos:got,at:obj.at||0};
+}
+async function syncNow(quiet){
+  if(!syncReady()||S.sync.on===false||syncBusy)return null;
+  syncBusy=true;
+  const before=S.sync.err;
+  try{
+    await syncPush();
+    const res=await syncPull();
+    S.sync.err=""; S.sync.at=Date.now();
+    if(res&&res.at)S.sync.theirAt=res.at;
+    persist();
+    if(!quiet||res.photos||before)render();
+    else paintPhotos();
+    return res;
+  }catch(e){
+    S.sync.err=(e&&e.message==="badkey")
+      ? "The other phone is using a different invite — send a fresh one."
+      : (navigator.onLine===false ? "Offline. It'll catch up." : "Couldn't reach your sync relay.");
+    persist();
+    if(!quiet)render();
+    return null;
+  }finally{ syncBusy=false; }
+}
+function syncSoon(){                      /* something changed: push shortly */
+  if(!syncReady()||S.sync.on===false)return;
+  clearTimeout(syncPushTimer);
+  syncPushTimer=setTimeout(()=>syncNow(true),SYNC_PUSH_DEBOUNCE);
+}
+function syncStart(){
+  clearInterval(syncTimer);
+  if(!syncReady()||S.sync.on===false)return;
+  syncTimer=setInterval(()=>{ if(!document.hidden)syncNow(true); },SYNC_PULL_MS);
+  syncNow(true);
+}
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden)syncNow(true); });
+window.addEventListener("online",()=>syncNow(true));
+function syncAgeLabel(ts){
+  if(!ts)return "not yet";
+  const s=Math.round((Date.now()-ts)/1000);
+  if(s<60)return "just now";
+  if(s<3600)return Math.round(s/60)+" min ago";
+  if(s<86400)return Math.round(s/3600)+" h ago";
+  return Math.round(s/86400)+" days ago";
+}
+
 /* ================= Garmin auto-sync =================
    A scheduled job writes garmin.json beside this page; we read it on open.
    Absent file = feature simply off. Encrypted file = we need the passphrase. */
@@ -3504,6 +3709,7 @@ function garminAgo(iso){
   await PhotoStore.open();
   render();
   prunePhotos().then(n=>{ if(n)paintPhotos(); }).catch(()=>{});
+  syncStart();
   garminSync().then(res=>{
     if(res.reason==="nofile")return;          // sync not set up; stay silent
     S.garminState=res;

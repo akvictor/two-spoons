@@ -51,6 +51,15 @@ Inspired by the parts of LoseIt! and Cal AI that actually get used day to day.
   roughly 30–50 KB), which is what keeps codes small enough to paste at all. The last 45
   days travel, up to 200 photos, so a year of meals never becomes a file nobody can send.
   Settings shows the space used and can clear them.
+- **Automatic sync.** With a small relay of your own (a free Cloudflare Worker — see
+  [SETUP-SYNC.md](SETUP-SYNC.md)), both phones keep themselves up to date: on open, when
+  you switch back to the app, every 45 seconds while it's open, and shortly after
+  anything changes. Food, exercise, water, weight and meal photos all travel.
+  Everything is encrypted on the phone before it is uploaded, so the relay holds bytes
+  it cannot read; the key only ever travels inside an invite. Each phone writes its own
+  slot and reads the other's, so there are no conflicts to resolve. Set it up on one
+  phone; the other picks it up from the invite with no typing. Manual file sync still
+  works and needs no account at all.
 - **Whose day you're looking at.** Once you're paired, two chips at the top of Today switch
   between you. Your partner's day is read-only — their phone owns their log — so you can
   see what they ate and the photo they took, but nothing you tap can change it.
