@@ -1427,6 +1427,8 @@ function todayHTML(){
   const col=colorOf(p.id);
   const ro=viewingPartner();
   let html=whoSwitchHTML()+
+    ((S.sync&&S.sync.err&&S.sync.on!==false)
+      ? '<p class="tiny muted" style="margin:2px 2px 10px;text-align:center">'+esc(S.sync.err)+'</p>' : "")+
     (ro?'<p class="tiny muted" style="margin:2px 2px 10px;text-align:center">'+
         esc(p.name||"Their")+'\u2019s day, as it reached this phone. Sync to catch up on anything newer.</p>':"")+
     '<section class="card"><div class="ringwrap">'+ringSVG(eaten,bud,128,col)+
@@ -3007,14 +3009,39 @@ function mergeFrom(st,opts){
   }
 }
 function openInvite(){
-  const json=backupJSON();
+  const json=backupJSON(), link=joinLink();
   openSheet('<h3>Invite '+esc(themProf().name||"your partner")+'</h3>'+
-    '<p class="tiny muted" style="margin-top:-6px">On their phone they choose <b>Join my partner</b>, then paste the code or open the file.</p>'+
+    (link
+      ? '<p class="tiny muted" style="margin-top:-6px">Send them this link. They tap it, fill in their own details, and their phone connects itself — nothing to paste.</p>'+
+        '<div class="row" style="margin:10px 0 4px"><button class="btn primary grow" id="invLink">Copy invite link</button>'+
+        '<button class="btn" id="invShare">Share…</button></div>'+
+        '<p class="tiny muted" style="margin:2px 2px 14px">The link carries the key to your shared data — send it to '+
+          esc(themProf().name||"your partner")+' the way you would a house key, not to a group chat.</p>'+
+        '<div class="label" style="margin:0 0 4px">Or the old way</div>'
+      : '<p class="tiny muted" style="margin-top:-6px">On their phone they choose <b>Join my partner</b>, then paste the code or open the file.</p>')+
     '<textarea rows="3" readonly id="invTxt" style="margin-top:10px;font-size:16px">'+esc(json)+'</textarea>'+
     '<div class="row" style="margin-top:10px"><button class="btn grow primary" id="invCopy">Copy code</button>'+
     '<button class="btn grow" id="invFile">Send as file</button></div>'+
     '<p class="tiny muted" style="margin:10px 2px 0" id="invNote">The code is small enough to paste anywhere, but carries no meal photos. '+
     'The file carries them — AirDrop or WhatsApp it across.</p>');
+  if($("#invLink"))$("#invLink").onclick=async()=>{
+    try{await navigator.clipboard.writeText(link);$("#invLink").textContent="Copied ✓";}
+    catch(e){
+      /* clipboard refused (older Safari, no gesture): show it so it can be copied by hand */
+      $("#invLink").textContent="Copy this:";
+      const box=document.createElement("textarea");
+      box.readOnly=true;box.rows=2;box.value=link;box.style.marginTop="8px";
+      $("#invLink").parentElement.after(box);box.select();
+    }
+  };
+  if($("#invShare"))$("#invShare").onclick=async()=>{
+    if(navigator.share){
+      try{ await navigator.share({title:"Two Spoons",text:"Join my Two Spoons journey",url:link}); }
+      catch(e){}
+    } else {
+      try{await navigator.clipboard.writeText(link);$("#invShare").textContent="Copied ✓";}catch(e){}
+    }
+  };
   $("#invCopy").onclick=async()=>{
     try{await navigator.clipboard.writeText(json);}catch(e){$("#invTxt").select();document.execCommand("copy");}
     $("#invCopy").textContent="Copied ✓";
@@ -3086,7 +3113,10 @@ function setupYouHTML(){
   const p=meProf();
   return setupShell(
     '<h3 style="margin-bottom:4px">About you</h3>'+
-    '<p class="tiny muted" style="margin:0 0 14px">Only your own details — your partner fills in theirs on their phone.</p>'+
+    (S.joinedByLink
+      ? '<p class="tiny muted" style="margin:0 0 14px">Connected to '+esc(themProf().name||"your partner")+
+        ' \u2713 &nbsp;Just your own details now — theirs stay on their phone.</p>'
+      : '<p class="tiny muted" style="margin:0 0 14px">Only your own details — your partner fills in theirs on their phone.</p>')+
     '<section class="card"><div class="row" style="margin-bottom:14px">'+avatarHTML(p,54)+
       '<div class="grow"><button class="btn small" id="uPhoto">'+(p.photo?"Change photo":"Add a photo")+'</button>'+
       (p.photo?' <button class="btn small danger" id="uRmPhoto">Remove</button>':"")+
@@ -3492,7 +3522,9 @@ function homeScreenTipHTML(){
 
    Each phone writes only its own slot and reads only the other's, so the two can
    never overwrite each other and there is nothing to resolve. */
-const SYNC_PULL_MS=45000, SYNC_PUSH_DEBOUNCE=15000;
+/* Reads are cheap (100k/day) so we can look often; writes are the scarce one
+   (1k/day) and only happen when something actually changed. */
+const SYNC_PULL_MS=15000, SYNC_PUSH_DEBOUNCE=6000;
 let syncTimer=null, syncPushTimer=null, syncBusy=false, lastPushed="";
 
 function syncReady(){
@@ -3570,8 +3602,14 @@ async function syncPull(){
   catch(e){ throw new Error("badkey"); }
   if(!obj||!obj.state) return {none:true};
 
+  /* Only worth repainting if their side really moved — otherwise a quiet poll
+     would rebuild the screen every few seconds under the user's fingers. */
+  const shot=()=>JSON.stringify({logs:S.logs,ex:S.ex,water:S.water,
+    weights:S.weights,profiles:S.profiles,journey:S.journey});
+  const was=shot();
   mergeFrom(obj.state);
   S.paired=true;
+  const changed=(was!==shot());
 
   let got=0;
   for(const id of (obj.photos||[])){
@@ -3591,7 +3629,7 @@ async function syncPull(){
       }
     }catch(e){}
   }
-  return {merged:true,photos:got,at:obj.at||0};
+  return {merged:true,photos:got,at:obj.at||0,changed:changed||got>0};
 }
 async function syncNow(quiet){
   if(!syncReady()||S.sync.on===false||syncBusy)return null;
@@ -3603,7 +3641,8 @@ async function syncNow(quiet){
     S.sync.err=""; S.sync.at=Date.now();
     if(res&&res.at)S.sync.theirAt=res.at;
     persist();
-    if(!quiet||res.photos||before)render();
+    /* their new entries should simply appear, without anyone tapping anything */
+    if(!quiet||before||(res&&res.changed))render();
     else paintPhotos();
     return res;
   }catch(e){
@@ -3635,6 +3674,49 @@ function syncAgeLabel(ts){
   if(s<3600)return Math.round(s/60)+" min ago";
   if(s<86400)return Math.round(s/3600)+" h ago";
   return Math.round(s/86400)+" days ago";
+}
+
+/* ---- joining by link ----
+   Pasting a screenful of JSON is the least seamless thing left in setup. A link
+   carries the same three facts — which relay, which room, which key — in a form
+   you can tap. It lives in the URL's fragment, after the #, which browsers never
+   send to the server: GitHub Pages sees a plain page request and nothing else. */
+function b64url(str){ return btoa(str).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,""); }
+function unb64url(str){
+  str=String(str).replace(/-/g,"+").replace(/_/g,"/");
+  while(str.length%4)str+="=";
+  return atob(str);
+}
+function joinLink(){
+  if(!(S.sync&&S.sync.room&&S.sync.key&&S.sync.url))return "";
+  return location.origin+location.pathname+"#j="+
+    S.sync.room+"~"+b64url(S.sync.key)+"~"+b64url(S.sync.url);
+}
+function readJoinLink(){
+  const m=(location.hash||"").match(/^#j=([a-f0-9]{16,64})~([A-Za-z0-9_-]+)~([A-Za-z0-9_-]+)$/);
+  if(!m)return null;
+  try{
+    const creds={room:m[1],key:unb64url(m[2]),url:unb64url(m[3])};
+    if(!/^https?:\/\//.test(creds.url))return null;
+    return creds;
+  }catch(e){ return null; }
+}
+function clearHash(){
+  try{ history.replaceState(null,"",location.origin+location.pathname+location.search); }
+  catch(e){ location.hash=""; }
+}
+/* Called at boot, before the first render, so the link decides where setup starts. */
+function consumeJoinLink(){
+  const creds=readJoinLink();
+  if(!creds)return false;
+  clearHash();
+  S.sync=Object.assign({},creds,{up:{},err:"",at:0,theirAt:0,on:true});
+  S.paired=true;
+  if(!S.setup){                       /* brand new phone: they are the joiner */
+    S.me="b"; S.active="b"; S.setupStep="you"; S.joinedByLink=true;
+  }
+  persist();
+  return true;
 }
 
 /* ================= Garmin auto-sync =================
@@ -3702,8 +3784,10 @@ function garminAgo(iso){
   const saved=await Store.load();
   if(saved&&saved.profiles&&saved.logs)S=migrate(saved);
   S.tab="today"; S.date=todayStr();
+  const joined=consumeJoinLink();
   await PhotoStore.open();
   render();
+  if(joined)syncNow(false);
   prunePhotos().then(n=>{ if(n)paintPhotos(); }).catch(()=>{});
   syncStart();
   garminSync().then(res=>{
