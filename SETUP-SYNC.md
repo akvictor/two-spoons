@@ -1,96 +1,108 @@
 # Turning on automatic sync
 
-Do this once, on **one** phone (whoever started the journey). The other phone gets
-everything from an invite — no typing, no second setup.
+Do this once, on **one** phone — whoever started the journey. The other phone gets
+everything from an invite: no typing, no second setup, nothing to read.
 
 You need a free Cloudflare account. No card, no cost at this size.
 
 ---
 
-## 1. Make the account
+## The quick way
 
-Go to <https://dash.cloudflare.com/sign-up>, sign up, confirm the email. That's it —
-skip anything it offers about adding a domain.
+### 1. Deploy the relay
 
-## 2. Make a place to keep the data
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/akvictor/two-spoons/tree/main/sync-worker)
 
-In the left sidebar: **Storage & Databases → KV → Create a namespace**.
+Click that. It will ask you to sign in to Cloudflare (create the account here if you
+don't have one) and to connect GitHub so it can copy the worker into your account.
 
-Call it `two-spoons`. Create it. You'll see it listed with an **ID** — a long string of
-letters and numbers. Copy that; you need it in a moment.
+Then press **Deploy**. Cloudflare creates the storage it needs and puts the relay live.
+Takes a minute or two.
 
-## 3. Make the worker
+### 2. Copy its address
 
-Left sidebar: **Compute (Workers) → Create → Start with Hello World → Deploy**.
-
-Name it `two-spoons-sync`. Once it deploys, click **Edit code**. Delete everything in
-the editor, paste in the whole contents of [`sync-worker/worker.js`](sync-worker/worker.js),
-and hit **Deploy** again.
-
-## 4. Connect the two
-
-Still on the worker: **Settings → Bindings → Add → KV namespace**.
-
-- Variable name: `SYNC`  ← must be exactly this
-- KV namespace: pick `two-spoons`
-
-Save, then **Deploy** once more so the binding takes effect.
-
-## 5. Check it
-
-The worker page shows its address, something like
+When it finishes you get an address like:
 
 ```
 https://two-spoons-sync.yourname.workers.dev
 ```
 
-Open that address with `/health` on the end. If it says `ok`, it's working.
+Check it works: open that address with `/health` on the end. It should say `ok`.
 
-## 6. Tell the app
+### 3. Tell the app
 
-On your phone, open **Settings → Automatic sync**, paste the address (without
-`/health`), and press **Save**. It should turn to **On**.
+On your phone: **Settings → Automatic sync**, paste the address (without `/health`),
+press **Save**. It should turn to **On**.
 
-## 7. Bring your partner in
+### 4. Bring your partner in
 
-**Settings → Send invite** and send them the code. When they import it, their phone
-picks up the address and the key by itself and starts syncing. They never see any of
-this page.
+**Settings → Send invite**, send them the code. When they import it their phone picks up
+the address and the key on its own and starts syncing. They never see this page.
+
+**Done.**
+
+---
+
+## If the button misbehaves
+
+The one-click deploy is known to sometimes finish with only a placeholder worker, or to
+skip creating the storage. If `/health` doesn't say `ok`, or the app keeps saying it
+can't reach the relay, set it up by hand — it's six minutes.
+
+<details>
+<summary><b>Manual setup</b></summary>
+
+**Make the storage.** Cloudflare dashboard → **Storage & Databases → KV → Create a
+namespace**. Name it `two-spoons`. Copy the **ID** it shows you.
+
+**Make the worker.** **Compute (Workers) → Create → Start with Hello World → Deploy**.
+Name it `two-spoons-sync`. Then **Edit code**, delete everything in the editor, paste in
+the whole of [`sync-worker/worker.js`](sync-worker/worker.js), and **Deploy** again.
+
+**Connect them.** On the worker: **Settings → Bindings → Add → KV namespace**.
+
+- Variable name: `SYNC` ← exactly this, capitals included
+- KV namespace: `two-spoons`
+
+Save, then **Deploy** once more so the binding takes effect.
+
+Now carry on from step 2 above.
+
+</details>
 
 ---
 
 ## What actually happens
 
-Your phone encrypts everything — food, exercise, weight, meal photos — *before* it
-leaves the device, then uploads it. Your partner's phone downloads it and decrypts it.
-The key never goes to Cloudflare; it only travels inside the invite you send each other.
+Your phone encrypts everything — food, exercise, weight, meal photos — *before* it leaves
+the device. Your partner's phone downloads it and decrypts it. The key never goes to
+Cloudflare; it only ever travels inside the invite you send each other. So Cloudflare
+holds two blobs it has no way to read.
 
-So Cloudflare stores two blobs it has no way to read.
+Each phone writes only its own slot and reads only the other's, so nothing can overwrite
+anything and there is no conflict to resolve. Your partner's day appears read-only on
+your phone: you see what they ate and the photo they took, but only their phone can
+change their log.
 
-Each phone writes only its own slot and reads only the other's, so nothing can
-overwrite anything. Your partner's day shows up read-only on your phone — you can see
-what they ate and the photo they took, but only their phone can change their log.
-
-Sync runs when you open the app, when you switch back to it, about every 45 seconds
-while it's open, and shortly after you change something. If a sync fails, nothing is
-lost — it catches up next time.
+Sync runs when you open the app, when you switch back to it, roughly every 45 seconds
+while it's open, and shortly after you change something. A failed sync loses nothing —
+it catches up next time.
 
 ## Will I run out of free tier?
 
-The free allowance is 1,000 writes and 100,000 reads a day. Two people logging meals
-use a handful of writes an hour — an idle app writes nothing at all. Photos upload once
-each and are never rewritten. You will not get near the limits.
+The allowance is 1,000 writes and 100,000 reads a day. Two people logging meals use a
+handful of writes an hour, and an idle app writes nothing at all. You will not get near
+it.
 
-## If something goes wrong
+## When something's wrong
 
-- **"Couldn't reach your sync relay"** — the address is wrong, or the worker isn't
-  deployed. Check `/health` in a browser.
-- **"The other phone is using a different invite"** — one of you is on older
-  credentials. Send a fresh invite and import it.
-- **Worker returns an error about `SYNC`** — step 4 was missed, or the variable name
-  isn't exactly `SYNC`.
+| The app says | What it means |
+|---|---|
+| Couldn't reach your sync relay | Wrong address, or the relay isn't deployed. Check `/health`. |
+| The other phone is using a different invite | One of you is on older credentials. Send a fresh invite and import it. |
+| Worker errors mentioning `SYNC` | The storage binding is missing or misnamed. See manual setup. |
 
 ## Turning it off
 
-**Settings → Automatic sync → Turn off.** Nothing more is uploaded. To wipe what's
+**Settings → Automatic sync → Turn off.** Nothing more is uploaded. To erase what's
 stored, delete the KV namespace in the Cloudflare dashboard.

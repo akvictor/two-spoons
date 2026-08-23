@@ -51,8 +51,8 @@ Inspired by the parts of LoseIt! and Cal AI that actually get used day to day.
   roughly 30–50 KB), which is what keeps codes small enough to paste at all. The last 45
   days travel, up to 200 photos, so a year of meals never becomes a file nobody can send.
   Settings shows the space used and can clear them.
-- **Automatic sync.** With a small relay of your own (a free Cloudflare Worker — see
-  [SETUP-SYNC.md](SETUP-SYNC.md)), both phones keep themselves up to date: on open, when
+- **Automatic sync.** With a small relay of your own — a free Cloudflare Worker, one
+  click to deploy ([SETUP-SYNC.md](SETUP-SYNC.md)) — both phones keep themselves up to date: on open, when
   you switch back to the app, every 45 seconds while it's open, and shortly after
   anything changes. Food, exercise, water, weight and meal photos all travel.
   Everything is encrypted on the phone before it is uploaded, so the relay holds bytes
