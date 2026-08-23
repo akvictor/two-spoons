@@ -3705,6 +3705,11 @@ function clearHash(){
   try{ history.replaceState(null,"",location.origin+location.pathname+location.search); }
   catch(e){ location.hash=""; }
 }
+/* Tapping an invite link while the app is already open changes only the fragment,
+   which does not reload the page — so listen for that too. */
+window.addEventListener("hashchange",()=>{
+  if(consumeJoinLink()){ render(); syncStart(); syncNow(false); }
+});
 /* Called at boot, before the first render, so the link decides where setup starts. */
 function consumeJoinLink(){
   const creds=readJoinLink();
