@@ -1,17 +1,16 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "two-spoons-sync",
+  "name": "two-spoons",
   "main": "worker.js",
   "compatibility_date": "2026-01-01",
   "observability": { "enabled": true },
 
-  // Deploying with the "Deploy to Cloudflare" button creates this namespace for you
-  // and rewrites the id below. Deploying by hand? Create a KV namespace, then paste
-  // its id here (or add the binding in the dashboard under Settings -> Bindings).
+  // The KV namespace this relay stores its two blobs in. A namespace id is not a
+  // secret — reaching the data still needs the account, or this Worker.
   "kv_namespaces": [
     {
       "binding": "SYNC",
-      "id": "REPLACED_ON_DEPLOY"
+      "id": "73b9f9372fa44792a38836f33dffbf38"
     }
   ]
 }
