@@ -27,6 +27,14 @@ Inspired by the parts of LoseIt! and Cal AI that actually get used day to day.
 - **Four visual styles** — Sticker, Clean, Blossom and Ink — each with its own shape, type
   and palette, plus light/dark/auto. Chosen at first launch and changeable any time under
   Settings, per phone.
+- **Your usuals, one tap.** Anything eaten twice or more for a given meal appears as a chip
+  under that meal — tap once to log it. Items already logged today drop out, so the row
+  stays useful rather than repeating what's on screen.
+- **Undo.** Adding, deleting, or copying yesterday can be reversed for a few seconds from a
+  toast, so a mis-tap never costs you the entry.
+- **Weekly balance.** A day over budget isn't a failed week. Today shows how far under or
+  over you are across the last seven days, counting only days you actually logged — an
+  unlogged day is unknown, not a surplus.
 - **Saved meals.** Bundle a meal you eat often into one entry and re-add it in a tap.
 - **237-item food database**, every entry with its own icon — heavy on Singapore hawker
   food (chicken rice, char kway teow, laksa, cai fan, kway chap, the full kopi/teh matrix)

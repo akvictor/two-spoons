@@ -245,6 +245,22 @@ details.dtable{margin-top:8px} details.dtable summary{font-size:12.5px;color:var
 table.data{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
 table.data td,table.data th{padding:4px 6px;border-bottom:1px solid var(--line2);text-align:right}
 table.data,.num,.fname,.fsub{-webkit-user-select:text;user-select:text}
+#toast{position:fixed;left:50%;transform:translate(-50%,140%);bottom:calc(84px + env(safe-area-inset-bottom));
+  z-index:50;display:flex;align-items:center;gap:14px;max-width:min(440px,92vw);
+  background:var(--ink);color:var(--bg);border-radius:var(--rad-s);padding:11px 14px;
+  font-size:14px;font-weight:var(--wt);box-shadow:0 6px 20px rgba(0,0,0,.28);
+  transition:transform .22s cubic-bezier(.34,1.4,.64,1);pointer-events:none}
+#toast.show{transform:translate(-50%,0);pointer-events:auto}
+#toast button{color:var(--bg);font-weight:var(--wt-h);text-decoration:underline;flex:none}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+.usuals{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.usual{display:inline-flex;align-items:center;gap:5px;border:var(--bw-s) solid var(--edge);
+  border-radius:999px;padding:6px 11px;font-size:13px;font-weight:var(--wt);background:var(--card)}
+.usual b{font-weight:var(--wt-h);color:var(--ink2)}
+.usual:active{transform:translateY(var(--press))}
+.bank{margin-top:12px;border-radius:var(--rad-xs);padding:8px 12px;font-size:13.5px;font-weight:var(--wt)}
+.bank.good{background:var(--good-soft);color:var(--good)}
+.bank.over{background:var(--over-soft);color:var(--over)}
 .dots{display:flex;gap:4px;flex-wrap:wrap}
 .dots .dot{width:14px;height:14px;border-radius:4px;flex:none}
 .dot.on{background:var(--good)}
@@ -274,6 +290,7 @@ table.data th:first-child,table.data td:first-child{text-align:left}
 
 <div class="app" id="app"></div>
 <div id="tip" class="num"></div>
+<div id="toast"></div>
 
 <script>
 "use strict";
@@ -603,6 +620,27 @@ const Store={
   where(){return this.tier==="local"?"this device":this.tier==="idb"?"this device (browser database)":"backup files only";}
 };
 function persist(){S.dirtyAt=Date.now();Store.save(S);}
+
+/* --- undo: snapshot the day before a change, offer it back briefly --- */
+let undoState=null, undoTimer=null;
+function snapshotDay(pid,date){
+  return JSON.parse(JSON.stringify({logs:S.logs[pid][date]||[],ex:S.ex[pid][date]||[]}));
+}
+function offerUndo(label,pid,date,before){
+  undoState={pid:pid,date:date,before:before};
+  const t=$("#toast");
+  t.innerHTML='<span class="grow">'+esc(label)+'</span><button id="undoBtn">Undo</button>';
+  t.classList.add("show");
+  $("#undoBtn").onclick=()=>{
+    if(!undoState)return;
+    S.logs[undoState.pid][undoState.date]=undoState.before.logs;
+    S.ex[undoState.pid][undoState.date]=undoState.before.ex;
+    undoState=null;hideToast();persist();render();
+  };
+  clearTimeout(undoTimer);
+  undoTimer=setTimeout(hideToast,5000);
+}
+function hideToast(){const t=$("#toast");if(t)t.classList.remove("show");undoState=null;}
 /* memory-only: nothing on disk, so don't let a stray tab close eat the day */
 window.addEventListener("beforeunload",e=>{
   if(Store.saving())return;
@@ -795,7 +833,8 @@ function todayHTML(){
     '<div class="eqn"><button class="bit" data-act="budget">Budget <b class="num">'+base+'</b>'+(p.override?' ✏️':'')+'</button>'+
       (burn?'<span class="bit">+ Exercise <b class="num" style="color:var(--burn)">'+r0(burn)+'</b></span>':"")+
       '<span class="bit">− Eaten <b class="num">'+r0(eaten)+'</b></span></div>'+
-    '<div class="macros">'+macroHTML("Protein",P,tP,"pro")+macroHTML("Carbs",C,tC,"carb")+macroHTML("Fat",F,tF,"fat")+'</div></section>';
+    '<div class="macros">'+macroHTML("Protein",P,tP,"pro")+macroHTML("Carbs",C,tC,"carb")+macroHTML("Fat",F,tF,"fat")+'</div>'+
+    bankLineHTML(p.id)+'</section>';
   /* water */
   const w=dayWater(p.id,S.date), wt=p.waterTarget||8;
   html+='<section class="card"><div class="row" style="justify-content:space-between"><span class="label">Water</span>'+
@@ -814,7 +853,8 @@ function todayHTML(){
     for(const e of list){
       html+='<button class="entry" data-act="edit" data-id="'+e.id+'"><span class="eic">'+(e.ic||"🍽️")+'</span><span class="grow"><span style="font-weight:600">'+esc(e.name)+'</span><br><span class="tiny muted num">'+(e.qty!==1?e.qty+" × ":"")+esc(e.serving||"serving")+'</span></span><span class="kc num">'+r0(e.kcal*e.qty)+'</span></button>';
     }
-    html+='<button class="addline" data-act="add" data-meal="'+m+'">+ Add food</button></div>';
+    html+=usualsHTML(m)+
+      '<button class="addline" data-act="add" data-meal="'+m+'">+ Add food</button></div>';
   }
   /* exercise */
   const xs=exEntries(p.id,S.date);
@@ -987,7 +1027,11 @@ function openEdit(id){
   const upd=()=>{$("#eVal").textContent=qty+"×";$("#eKcal").textContent=r0(e.kcal*qty)+" kcal";};
   $("#eMinus").onclick=()=>{qty=Math.max(0.25,+(qty-0.25).toFixed(2));upd();};
   $("#ePlus").onclick=()=>{qty=+(qty+0.25).toFixed(2);upd();};
-  $("#eDel").onclick=()=>{S.logs[S.active][S.date]=entries(S.active,S.date).filter(x=>x.id!==id);persist();closeSheet();render();};
+  $("#eDel").onclick=()=>{
+    const before=snapshotDay(S.active,S.date), nm=e.name;
+    S.logs[S.active][S.date]=entries(S.active,S.date).filter(x=>x.id!==id);
+    persist();closeSheet();render();offerUndo("Removed "+nm,S.active,S.date,before);
+  };
   $("#eSave").onclick=()=>{e.qty=qty;e.meal=$("#eMeal").value;persist();closeSheet();render();};
 }
 function addEntry(f,qty,meal){
@@ -1127,7 +1171,11 @@ function openEditEx(id){
   const upd=()=>{$("#xVal").textContent=mins;if(e.met)$("#xK").value=r0(exKcal(e.met,w,mins));};
   $("#xMinus").onclick=()=>{mins=Math.max(0,mins-5);upd();};
   $("#xPlus").onclick=()=>{mins+=5;upd();};
-  $("#xDel").onclick=()=>{S.ex[S.active][S.date]=exEntries(S.active,S.date).filter(x=>x.id!==id);persist();closeSheet();render();};
+  $("#xDel").onclick=()=>{
+    const before=snapshotDay(S.active,S.date), nm=e.name;
+    S.ex[S.active][S.date]=exEntries(S.active,S.date).filter(x=>x.id!==id);
+    persist();closeSheet();render();offerUndo("Removed "+nm,S.active,S.date,before);
+  };
   $("#xSave").onclick=()=>{
     const k=+$("#xK").value;
     if(!(k>0)){alert("Enter how many calories that burned.");return;}
@@ -1304,6 +1352,53 @@ function usHTML(){
   html+='<button class="btn" style="width:100%" data-act="import">Sync with '+esc(them.name||"partner")+'</button>'+
         '<p class="tiny muted" style="text-align:center;margin:10px 0 4px">Swap codes now and then to keep both phones up to date.</p>';
   return html;
+}
+/* ================= your usuals =================
+   Most meals repeat. Anything eaten twice or more for this meal becomes a
+   one-tap chip, so the common case stops being a search. */
+function usuals(pid,meal,limit){
+  const seen={};
+  for(const d in S.logs[pid]){
+    for(const e of S.logs[pid][d]){
+      if(e.meal!==meal)continue;
+      const k=e.name;
+      if(!seen[k])seen[k]={n:0,item:e};
+      seen[k].n++; seen[k].item=e;
+    }
+  }
+  const today=entries(pid,S.date).filter(e=>e.meal===meal).map(e=>e.name);
+  return Object.values(seen)
+    .filter(x=>x.n>=2 && today.indexOf(x.item.name)<0)
+    .sort((a,b)=>b.n-a.n).slice(0,limit)
+    .map(x=>x.item);
+}
+function usualsHTML(meal){
+  const list=usuals(S.me,meal,3);
+  if(!list.length)return "";
+  return '<div class="usuals">'+list.map(e=>
+    '<button class="usual" data-act="usual" data-meal="'+meal+'" data-name="'+esc(e.name)+'">'+
+      '<span>'+(e.ic||"🍽️")+'</span> '+esc(e.name)+' <b class="num">'+r0(e.kcal)+'</b></button>').join("")+'</div>';
+}
+
+/* ================= calorie banking =================
+   A day over budget isn't a failure if the week balances. Only days that were
+   actually logged count -- an unlogged day is unknown, not a surplus. */
+function weekBank(pid){
+  let net=0,days=0;
+  for(const d of periodDays(7)){
+    if(!anyLogged(pid,d))continue;
+    days++; net+=dayBudget(pid,d)-dayKcal(pid,d);
+  }
+  return {net:net,days:days};
+}
+function bankLineHTML(pid){
+  const b=weekBank(pid);
+  if(b.days<2)return "";
+  const under=b.net>=0;
+  return '<div class="bank '+(under?"good":"over")+'">'+
+    (under?'🏦 <b class="num">'+r0(b.net)+'</b> under budget for the week'
+          :'⚖️ <b class="num">'+r0(-b.net)+'</b> over budget for the week')+
+    '<span class="tiny muted"> · '+b.days+' logged days</span></div>';
 }
 /* ================= consistency =================
    One square per day: filled = logged and within budget, hollow-warm = logged
@@ -1829,9 +1924,18 @@ function bindMain(){
       const a=el.dataset.act, pid=el.dataset.pid;
       if(a==="tab"){S.tab=el.dataset.tab;render();}
       else if(a==="who"){S.active=pid;persist();render();}
-      else if(a==="prevday"){S.date=addDays(S.date,-1);render();}
-      else if(a==="nextday"){if(S.date<todayStr()){S.date=addDays(S.date,1);render();}}
+      else if(a==="prevday"){hideToast();S.date=addDays(S.date,-1);render();}
+      else if(a==="nextday"){if(S.date<todayStr()){hideToast();S.date=addDays(S.date,1);render();}}
       else if(a==="gotoday"){S.date=todayStr();render();}
+      else if(a==="usual"){
+        const meal=el.dataset.meal, name=el.dataset.name;
+        const src=usuals(S.me,meal,99).find(x=>x.name===name);
+        if(src){
+          const before=snapshotDay(S.me,S.date);
+          addEntry({name:src.name,serving:src.serving,kcal:src.kcal,p:src.p,c:src.c,f:src.f,ic:src.ic},1,meal);
+          render();offerUndo("Added "+src.name,S.me,S.date,before);
+        }
+      }
       else if(a==="add"){openAdd(el.dataset.meal);}
       else if(a==="addex"){openAddEx();}
       else if(a==="edit"){openEdit(el.dataset.id);}
@@ -1855,9 +1959,10 @@ function bindMain(){
       else if(a==="delmeal"){S.savedMeals=S.savedMeals.filter(m=>m.id!==el.dataset.id);persist();render();}
       else if(a==="delcustom"){S.custom=S.custom.filter(c=>c.name!==el.dataset.name);persist();render();}
       else if(a==="copyday"){
+        const before=snapshotDay(S.active,S.date);
         const y=entries(S.active,addDays(S.date,-1));
         S.logs[S.active][S.date]=y.map(e=>Object.assign({},e,{id:uid(),ts:Date.now()}));
-        persist();render();
+        persist();render();offerUndo("Copied "+y.length+" items from yesterday",S.active,S.date,before);
       }
       else if(a==="logweight"){
         const v=parseFloat($("#wIn").value);
