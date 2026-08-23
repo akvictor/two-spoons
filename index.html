@@ -256,11 +256,10 @@ table.data,.num,.fname,.fsub{-webkit-user-select:text;user-select:text}
 #toast button{color:var(--bg);font-weight:var(--wt-h);text-decoration:underline;flex:none}
 @media (prefers-reduced-motion:reduce){#toast{transition:opacity .18s ease,visibility .18s}}
 .cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));grid-auto-rows:1fr;gap:6px;margin:2px 0 4px}
-.cat{display:flex;align-items:center;gap:8px;min-height:56px;border:var(--bw-s) solid var(--edge);
+.cat{display:flex;align-items:center;gap:8px;min-height:46px;border:var(--bw-s) solid var(--edge);
   border-radius:var(--rad-s);padding:8px 10px;background:var(--card);text-align:left;color:var(--ink)}
 .cat .cic{font-size:17px;flex:none;line-height:1}
-.cat .cnm{display:block;font-size:12.5px;font-weight:var(--wt);line-height:1.25}
-.cat .cct{display:block;font-size:11px;line-height:1.3;color:var(--ink3);font-weight:var(--wt)}
+.cat .cnm{font-size:12.5px;font-weight:var(--wt);line-height:1.25}
 .cat:active{background:var(--card2)}
 .linkbtn{font-size:11px;font-weight:var(--wt);color:var(--ink3);text-decoration:underline;text-transform:none;letter-spacing:0}
 .usuals{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
@@ -849,6 +848,241 @@ const FOODS=[
 ["Protein bar","1",215,20,22,6,"","🍫","snacks"],
 ["Rice crackers","30 g",120,2,26,1,"","🍘","snacks"],
 ["Ice pop","1",60,0,15,0,"popsicle","🍦","snacks"],
+["Almond croissant","1",390,8,40,22,"","🥐","breakfast"],
+["Pain au chocolat","1",330,7,33,19,"","🥐","breakfast"],
+["Cinnamon roll","1",350,6,50,14,"","🍯","dessert"],
+["Banana bread","1 slice",265,4,38,11,"","🍞","dessert"],
+["Carrot cake (western)","1 slice",345,4,42,18,"","🍰","dessert"],
+["Red velvet cake","1 slice",390,5,48,20,"","🍰","dessert"],
+["Lemon tart","1 slice",335,5,40,17,"","🥧","dessert"],
+["Apple pie","1 slice",305,3,42,14,"","🥧","dessert"],
+["Acai bowl","1 bowl",380,8,60,12,"","🥣","breakfast"],
+["Overnight oats","1 cup",320,12,48,9,"","🥣","breakfast"],
+["Chia pudding","1 cup",235,8,24,12,"","🥣","breakfast"],
+["Yogurt parfait","1 cup",280,12,42,7,"","🥣","breakfast"],
+["Shakshuka","1 pan",330,20,18,20,"","🍳","breakfast"],
+["Salmon bagel","1",450,24,52,16,"lox","🥯","breakfast"],
+["Basque cheesecake","1 slice",380,8,28,26,"burnt","🍰","dessert"],
+["Croffle","1",320,5,34,18,"","🧇","dessert"],
+["Canele","1",190,4,30,6,"","🧁","dessert"],
+["Madeleine","2 pc",200,4,24,10,"","🍪","dessert"],
+["Truffle fries","1 portion",425,6,46,24,"","🍟","western"],
+["Sweet potato fries","1 portion",335,4,44,16,"","🍟","western"],
+["Burrata with tomato","1 plate",340,18,8,26,"","🧀","western"],
+["Bruschetta","3 pc",245,7,32,10,"","🥖","western"],
+["Calamari (fried)","1 portion",370,22,26,20,"","🦑","western"],
+["Buffalo wings","6 pc",490,36,10,34,"","🍗","western"],
+["Mozzarella sticks","5 pc",380,18,28,22,"","🧀","western"],
+["Quiche lorraine","1 slice",370,14,24,24,"","🥧","western"],
+["Croque monsieur","1",475,26,34,26,"","🥪","western"],
+["Fruit smoothie","1 cup",200,4,42,2,"","🥤","drinks"],
+["Iced chocolate","1 cup",280,8,40,10,"","🥤","drinks"],
+["Affogato","1",175,4,22,8,"","☕","dessert"],
+["Chicken cutlet with rice","1 plate",680,32,80,26,"","🍗","rice"],
+["Kway teow soup","1 bowl",400,22,56,10,"","🍜","noodles"],
+["Lor bak","1 portion",280,16,18,16,"","🍖","small"],
+["Ngoh hiang","4 pc",300,14,20,18,"five spice roll","🥙","small"],
+["Fried wanton","6 pc",290,12,24,16,"","🥟","small"],
+["Spring roll (fried)","2 pc",230,6,24,12,"","🥙","small"],
+["Yam ring","1 portion",465,16,46,24,"","🍲","small"],
+["Jian dui","2 pc",240,4,34,10,"sesame ball","🍡","dessert"],
+["Sambal sotong","1 plate",340,26,14,20,"squid","🦑","asian"],
+["Ikan bilis with peanuts","3 tbsp",145,8,6,10,"anchovies","🐟","snacks"],
+["Begedil","2 pc",190,5,22,9,"potato cutlet","🥔","small"],
+["Tahu goreng","1 plate",280,14,20,16,"","🍛","small"],
+["Kacang pool","1 plate",375,18,40,16,"","🫘","breakfast"],
+["Roti bom","1",390,6,46,20,"","🫓","indian"],
+["Roti tissue","1",400,6,58,16,"","🫓","indian"],
+["Cheese prata","1",415,12,42,22,"","🫓","indian"],
+["Murtabak (mutton)","1",650,30,60,32,"","🫓","indian"],
+["Nasi kandar","1 plate",785,32,88,34,"","🍛","indian"],
+["Milo godzilla","1 cup",400,10,58,14,"","🥛","drinks"],
+["Horlicks","1 cup",185,7,28,5,"","🥛","drinks"],
+["Braised egg","1",85,7,1,6,"lu dan","🥚","protein"],
+["Fried egg","1",95,6,0,8,"sunny side","🍳","protein"],
+["Steamed egg with minced pork","1 bowl",205,16,4,14,"","🥚","asian"],
+["Long bean with egg","1 plate",170,8,12,10,"","🥒","veg"],
+["Curry vegetable","1 plate",200,4,14,14,"","🥬","veg"],
+["Sambal brinjal","1 plate",200,3,16,14,"eggplant","🍆","veg"],
+["Fried luncheon meat","2 slices",230,8,4,20,"","🍖","protein"],
+["Fried fish fillet","1 piece",255,18,14,14,"","🐟","protein"],
+["Taiwanese beef noodle soup","1 bowl",555,34,64,18,"niu rou mian","🍜","noodles"],
+["Lu rou fan","1 bowl",540,18,72,20,"braised pork rice","🍚","rice"],
+["Popcorn chicken","1 portion",390,24,24,22,"salted crispy","🍗","snacks"],
+["Oyster mee sua","1 bowl",330,14,46,10,"","🍜","noodles"],
+["Scallion pancake","1",315,7,36,16,"cong you bing","🥞","small"],
+["Gua bao","1",345,16,34,16,"","🥟","small"],
+["Wonton in chilli oil","6 pc",345,16,30,18,"","🥟","small"],
+["Dan dan noodles","1 bowl",575,22,68,24,"","🍜","noodles"],
+["Hot and sour soup","1 bowl",140,8,14,6,"","🍲","asian"],
+["Egg drop soup","1 bowl",95,7,8,4,"","🍲","asian"],
+["Peking duck wraps","2 wraps",305,16,24,16,"","🦆","asian"],
+["Char siew","100 g",260,24,10,14,"bbq pork","🍖","protein"],
+["Sio bak","100 g",375,22,0,32,"roast pork belly","🍖","protein"],
+["Salt baked chicken","1 portion",290,34,2,16,"","🍗","asian"],
+["Hainanese pork chop","1 plate",555,30,50,26,"","🍖","asian"],
+["Sweet and sour chicken","1 plate",520,28,52,22,"","🍗","asian"],
+["Cashew chicken","1 plate",460,32,24,26,"","🍗","asian"],
+["Beef with black bean","1 plate",410,30,18,24,"","🥩","asian"],
+["Fish maw soup","1 bowl",175,16,14,6,"","🍲","asian"],
+["Masala thosai","1",415,10,62,14,"dosa","🫓","indian"],
+["Onion thosai","1",350,8,52,12,"dosa","🫓","indian"],
+["Poori","2 pc",330,6,40,16,"","🫓","indian"],
+["Uttapam","1",315,8,48,10,"","🫓","indian"],
+["Chicken tikka","5 pc",285,34,6,14,"","🍗","indian"],
+["Fish curry","1 portion",315,28,10,18,"","🐟","indian"],
+["Prawn curry","1 portion",315,26,12,18,"","🦐","indian"],
+["Aloo gobi","1 plate",245,6,28,12,"","🥔","indian"],
+["Chana masala","1 plate",315,14,42,10,"chickpea","🫘","indian"],
+["Raita","1 cup",100,6,10,4,"","🥣","indian"],
+["Papadum","2 pc",100,4,12,4,"","🫓","indian"],
+["Mango lassi","1 cup",260,8,46,5,"","🥛","drinks"],
+["Gulab jamun","2 pc",310,4,46,12,"","🍡","dessert"],
+["Jalebi","3 pc",290,2,48,10,"","🍬","dessert"],
+["Samosa","2 pc",320,8,36,16,"","🥙","small"],
+["Pakora","6 pc",295,8,30,16,"","🥙","small"],
+["Rogan josh","1 portion",400,32,10,26,"mutton","🍖","indian"],
+["Saag aloo","1 plate",230,6,24,12,"spinach potato","🥬","indian"],
+["Butter naan","1",305,8,46,10,"","🫓","indian"],
+["Cheese naan","1",390,14,48,16,"","🫓","indian"],
+["Roti canai","1",315,7,40,14,"","🫓","indian"],
+["Kheer","1 bowl",270,7,42,8,"rice pudding","🍥","dessert"],
+["Miso cod","1 portion",285,30,10,14,"gindara","🐟","asian"],
+["Saba shioyaki","1 portion",285,26,0,20,"grilled mackerel","🐟","asian"],
+["Tuna sashimi","5 pc",105,22,0,2,"maguro","🍣","asian"],
+["Hamachi sashimi","5 pc",150,20,0,8,"yellowtail","🍣","asian"],
+["Ikura","1 tbsp",35,4,0,2,"salmon roe","🍣","asian"],
+["Chuka wakame","1 portion",85,2,10,4,"seaweed salad","🥢","asian"],
+["Tamagoyaki","3 pc",140,9,8,8,"","🥚","asian"],
+["Ramen egg","1",80,7,2,5,"ajitama","🥚","protein"],
+["Chashu","2 slices",190,14,2,14,"","🍖","protein"],
+["Natto","1 pack",105,8,7,5,"","🫘","protein"],
+["Tempura vegetable","4 pc",260,5,28,14,"","🍤","asian"],
+["Ebi fry","3 pc",280,16,22,14,"","🍤","asian"],
+["Katsu sando","1",505,26,46,24,"","🥪","asian"],
+["Melon pan","1",360,7,56,12,"","🍞","dessert"],
+["Castella","1 slice",195,5,32,5,"","🍰","dessert"],
+["Warabi mochi","1 portion",195,2,40,3,"","🍡","dessert"],
+["Dakgalbi","1 portion",460,32,34,22,"","🍗","asian"],
+["Mul naengmyeon","1 bowl",440,18,78,6,"cold noodle","🍜","noodles"],
+["Haemul pajeon","1",490,20,48,24,"seafood pancake","🥞","asian"],
+["Kimchi pajeon","1",430,12,46,22,"","🥞","asian"],
+["Yukgaejang","1 bowl",320,28,16,16,"spicy beef soup","🍲","asian"],
+["Doenjang jjigae","1 bowl",225,18,16,10,"","🍲","asian"],
+["Bossam","1 portion",475,34,8,34,"","🍖","asian"],
+["Jokbal","1 portion",440,36,6,30,"pig trotter","🍖","asian"],
+["Hotteok","1",290,4,46,10,"","🥞","dessert"],
+["Bingsu","1 bowl",500,10,88,12,"shaved ice","🍨","dessert"],
+["Tteok galbi","1 portion",380,28,18,22,"","🍖","asian"],
+["Khao pad","1 plate",595,22,82,20,"thai fried rice","🍚","rice"],
+["Thai iced tea","1 cup",255,4,42,8,"cha yen","🥤","drinks"],
+["Panang curry with rice","1 plate",695,26,80,30,"","🍛","rice"],
+["Moo ping","3 skewers",290,26,10,16,"grilled pork","🍢","asian"],
+["Khao man gai","1 plate",610,30,78,20,"thai chicken rice","🍛","rice"],
+["Bun bo hue","1 bowl",495,28,60,16,"","🍜","noodles"],
+["Hu tieu","1 bowl",420,24,58,10,"","🍜","noodles"],
+["Ca phe sua da","1 cup",160,3,28,4,"vietnamese coffee","☕","drinks"],
+["Banh xeo","1",405,16,40,20,"","🥞","asian"],
+["Nasi campur","1 plate",750,30,86,32,"","🍛","rice"],
+["Bakso","1 bowl",400,22,46,14,"meatball soup","🍜","noodles"],
+["Mie ayam","1 bowl",505,24,66,16,"","🍜","noodles"],
+["Martabak manis","1 slice",375,7,46,18,"sweet","🥞","dessert"],
+["Asam laksa","1 bowl",410,22,58,10,"penang","🍜","noodles"],
+["Nasi kerabu","1 plate",580,26,78,18,"","🍛","rice"],
+["Chicken parmigiana","1 plate",590,44,40,28,"","🍗","western"],
+["Beef stroganoff","1 plate",520,32,40,26,"","🥩","western"],
+["Gnocchi","1 plate",490,14,72,16,"","🍝","western"],
+["Ravioli","1 plate",475,20,58,18,"","🍝","western"],
+["Calzone","1",675,32,74,28,"","🍕","western"],
+["Hawaiian pizza","2 slices",480,22,58,18,"","🍕","western"],
+["Philly cheesesteak","1",605,36,48,30,"","🥪","western"],
+["BLT sandwich","1",395,18,36,20,"","🥪","western"],
+["Grilled cheese","1",425,18,34,24,"","🧀","western"],
+["Tuna melt","1",455,28,36,22,"","🥪","western"],
+["Pulled pork sandwich","1",515,32,52,20,"","🥪","western"],
+["Beef brisket","150 g",400,42,0,26,"","🥩","protein"],
+["Pork ribs","1 portion",590,44,18,38,"","🍖","western"],
+["Corn dog","1",330,10,32,18,"","🌭","western"],
+["Chilli con carne","1 bowl",410,28,34,18,"","🍲","western"],
+["Paella","1 plate",550,28,74,16,"","🥘","western"],
+["Moussaka","1 portion",440,24,28,26,"","🍆","western"],
+["Gyro","1",530,30,48,24,"","🌯","western"],
+["Ceviche","1 plate",205,26,12,6,"","🐟","western"],
+["Fish taco","2",400,22,42,16,"","🌮","western"],
+["Empanada","2 pc",360,14,36,18,"","🥟","western"],
+["Poutine","1 portion",585,16,58,32,"","🍟","western"],
+["Sliders","3 pc",440,24,36,22,"","🍔","western"],
+["Ratatouille","1 plate",205,4,20,12,"","🍆","veg"],
+["Ghee","1 tsp",45,0,0,5,"","🧈","snacks"],
+["Cream","2 tbsp",60,1,1,6,"","🥛","snacks"],
+["Sour cream","2 tbsp",65,1,2,6,"","🥛","snacks"],
+["Whipped cream","2 tbsp",65,1,2,6,"","🍦","snacks"],
+["Evaporated milk","2 tbsp",40,2,3,2,"","🥛","snacks"],
+["Yogurt (flavoured)","1 cup",190,9,32,3,"","🥣","breakfast"],
+["Skyr","1 cup",110,20,8,0,"","🥣","protein"],
+["Ricotta","50 g",85,6,2,6,"","🧀","protein"],
+["Parmesan","20 g",100,8,1,7,"","🧀","protein"],
+["Brie","30 g",95,6,0,8,"","🧀","protein"],
+["Blue cheese","30 g",110,6,1,9,"","🧀","protein"],
+["Coconut oil","1 tsp",45,0,0,5,"","🥥","snacks"],
+["Peanut oil","1 tsp",45,0,0,5,"","🥜","snacks"],
+["Macadamias","30 g",215,2,4,21,"","🥜","snacks"],
+["Pecans","30 g",210,3,4,20,"","🥜","snacks"],
+["Sunflower seeds","30 g",185,6,6,15,"","🌻","snacks"],
+["Pumpkin seeds","30 g",175,9,3,14,"","🎃","snacks"],
+["Flaxseed","1 tbsp",55,2,3,4,"linseed","🌾","snacks"],
+["Sesame seeds","1 tbsp",50,2,2,4,"","🌾","snacks"],
+["Rice noodles (dry)","60 g",210,4,48,0,"kway teow bee hoon","🍜","noodles"],
+["Soba (dry)","60 g",210,8,42,1,"","🍜","noodles"],
+["Barley (cooked)","1 cup",200,4,44,1,"","🌾","protein"],
+["Bulgur (cooked)","1 cup",160,6,34,0,"","🌾","protein"],
+["Tofu puff","5 pc",140,8,4,10,"tau pok","🍛","protein"],
+["Beancurd skin","30 g",145,14,4,8,"tau kee","🍛","protein"],
+["Wholemeal pasta (cooked)","1 cup",200,8,40,1,"","🍝","protein"],
+["Raspberries","1 cup",75,1,15,1,"","🔶","fruit"],
+["Blackberries","1 cup",75,2,14,1,"","🟣","fruit"],
+["Figs","2 pc",80,1,19,0,"","🟣","fruit"],
+["Apricot","2 pc",35,1,8,0,"","🟠","fruit"],
+["Nectarine","1",65,1,15,0,"","🍑","fruit"],
+["Passion fruit","2 pc",50,2,8,1,"","🟣","fruit"],
+["Coconut flesh","50 g",185,2,6,17,"","🥥","fruit"],
+["Custard apple","1",165,3,36,1,"soursop family","🟢","fruit"],
+["Ciku","2 pc",110,1,24,1,"sapodilla","🟤","fruit"],
+["Duku langsat","10 pc",70,1,16,0,"","🟡","fruit"],
+["Asparagus","1 cup",30,3,5,0,"","🥬","veg"],
+["Zucchini","1 cup",20,1,4,0,"courgette","🥒","veg"],
+["Bell pepper","1",30,1,7,0,"capsicum","🫑","veg"],
+["Cauliflower","1 cup",30,2,5,0,"","🥦","veg"],
+["Brussels sprouts","1 cup",45,3,8,0,"","🥬","veg"],
+["Green beans","1 cup",40,2,8,0,"","🥒","veg"],
+["Peas","1 cup",115,8,21,0,"","🫘","veg"],
+["Beetroot","1 cup",60,2,13,0,"","🟣","veg"],
+["Radish","1 cup",20,1,4,0,"","🫑","veg"],
+["Celery","1 cup",15,1,3,0,"","🥬","veg"],
+["Onion","1 medium",50,1,11,0,"","🧅","veg"],
+["Kale","1 cup",30,2,5,0,"","🥬","veg"],
+["Rocket","1 cup",10,1,1,0,"arugula","🥬","veg"],
+["Bok choy","1 cup",15,1,3,0,"","🥬","veg"],
+["Lotus root (cooked)","1 cup",90,3,19,0,"","🫘","veg"],
+["Bamboo shoot","1 cup",30,2,5,0,"","🎋","veg"],
+["Water chestnut","1 cup",100,1,24,0,"","🌰","veg"],
+["Taro (cooked)","1 cup",190,1,46,0,"yam","🟣","veg"],
+["Turnip","1 cup",35,1,8,0,"","🫑","veg"],
+["Soursop juice","1 cup",130,1,32,0,"","🥤","drinks"],
+["Watermelon juice","1 cup",115,1,28,0,"","🍉","drinks"],
+["Lemon barley","1 cup",110,0,28,0,"","🥤","drinks"],
+["Winter melon tea","1 cup",120,0,30,0,"","🥤","drinks"],
+["Honey lemon","1 cup",105,0,26,0,"","🍯","drinks"],
+["Sports drink","1 bottle",135,0,34,0,"gatorade pocari","🥤","drinks"],
+["Coconut jelly","1 cup",115,1,26,1,"","🍥","dessert"],
+["Muruku","30 g",165,3,16,10,"","🍿","snacks"],
+["Keropok lekor","3 pc",210,8,22,10,"","🍤","snacks"],
+["Seaweed chicken","30 g",160,6,16,8,"","🍿","snacks"],
+["Nyonya dumpling","1",400,12,56,14,"zhang","🍡","small"],
+["Bak chang","1",440,14,60,16,"rice dumpling","🍡","small"],
+["Tang hoon soup","1 bowl",280,14,42,6,"glass noodle","🍜","noodles"],
+["Umeshu","1 glass",160,0,18,0,"alcohol plum wine","🍶","drinks"],
+["Highball","1 glass",120,0,2,0,"alcohol whisky soda","🥃","drinks"],
 ];
 /* ================= Exercise database (METs) ================= */
 /* [name, MET, keywords] — kcal = MET x kg x hours */
@@ -1197,7 +1431,7 @@ function macroHTML(name,v,t,cls){
 /* ================= Add food sheet ================= */
 let sheetMeal="Lunch", sheetTab="search", pickedFood=null, pickedQty=1, quickParsed=null;
 function openAdd(meal){
-  sheetMeal=meal||guessMeal(); sheetTab="search"; pickedFood=null; pickedQty=1; quickParsed=null; foodCat=null;
+  sheetMeal=meal||guessMeal(); sheetTab="search"; pickedFood=null; pickedQty=1; quickParsed=null; foodCat=null; onlineState={q:"",busy:false,err:"",results:null};
   openSheet(addSheetHTML()); bindAddSheet();
 }
 function guessMeal(){const h=new Date().getHours();return h<10.5?"Breakfast":h<15?"Lunch":h<21?"Dinner":"Snacks";}
@@ -1279,14 +1513,86 @@ function foodListHTML(q){
     }
     html+='<div class="label" style="margin:14px 0 2px">Browse</div>';
     html+='<div class="cats">'+CATS.map(c=>
-      '<button class="cat" data-cat="'+c[0]+'"><span class="cic">'+c[2]+'</span><span>'+
-      '<span class="cnm">'+esc(c[1])+'</span>'+
-      '<span class="cct num">'+foodsInCat(c[0]).length+'</span></span></button>').join("")+'</div>';
+      '<button class="cat" data-cat="'+c[0]+'"><span class="cic">'+c[2]+'</span>'+
+      '<span class="cnm">'+esc(c[1])+'</span></button>').join("")+'</div>';
     html+='<div class="label" style="margin:14px 0 2px">Popular</div>';
   }
   html+=res.map(foodRowHTML).join("");
-  if(q && !res.length) html+='<p class="tiny muted" style="text-align:center;padding:16px">No match — try Quick add or Custom.</p>';
+  if(q){
+    if(!res.length) html+='<p class="tiny muted" style="text-align:center;padding:16px 16px 4px">Not in the app\'s list.</p>';
+    html+='<div class="row" style="margin-top:8px"><button class="btn small grow" data-online="'+esc(q)+'">'+
+      (res.length?'Not what you meant? Look it up online':'Look it up online')+'</button></div>'+
+      '<p class="tiny muted" style="margin:6px 2px 0">Sends “'+esc(q)+'” to Open Food Facts. Best for packaged food and drinks.</p>'+
+      '<div id="onlineOut">'+onlineHTML()+'</div>';
+  }
   return html;
+}
+/* ================= online lookup =================
+   Open Food Facts: free, no API key, sends Access-Control-Allow-Origin: *.
+   Packaged and barcoded products, contributed by the public — good for a snack
+   or a drink off the shelf, thin on cooked hawker food. Never called on its own:
+   it only runs when you tap the button, because it sends what you typed to
+   another company's server. */
+let onlineState={q:"",busy:false,err:"",results:null};
+const OFF_URL="https://world.openfoodfacts.org/cgi/search.pl";
+function offServing(n,sizeText){
+  /* prefer the label's own serving; fall back to 100 g */
+  const kS=n["energy-kcal_serving"];
+  if(kS>0) return {serving:(sizeText||"1 serving"),kcal:kS,
+    p:n.proteins_serving||0,c:n.carbohydrates_serving||0,f:n.fat_serving||0};
+  const k100=n["energy-kcal_100g"];
+  if(k100>0) return {serving:"100 g",kcal:k100,
+    p:n.proteins_100g||0,c:n.carbohydrates_100g||0,f:n.fat_100g||0};
+  return null;
+}
+async function lookupOnline(q){
+  onlineState={q:q,busy:true,err:"",results:null};
+  paintOnline();
+  try{
+    const url=OFF_URL+"?search_terms="+encodeURIComponent(q)+
+      "&search_simple=1&action=process&json=1&page_size=20"+
+      "&fields=product_name,brands,nutriments,serving_size";
+    const ctrl=new AbortController();
+    const timer=setTimeout(()=>ctrl.abort(),12000);
+    const r=await fetch(url,{signal:ctrl.signal});
+    clearTimeout(timer);
+    if(!r.ok) throw new Error("server said "+r.status);
+    const j=await r.json();
+    const out=[];
+    for(const prod of (j.products||[])){
+      const nm=(prod.product_name||"").trim();
+      if(!nm) continue;
+      const per=offServing(prod.nutriments||{},prod.serving_size);
+      if(!per) continue;
+      const brand=(prod.brands||"").split(",")[0].trim();
+      out.push({name:brand&&nm.toLowerCase().indexOf(brand.toLowerCase())<0?brand+" "+nm:nm,
+        serving:per.serving,kcal:Math.round(per.kcal),p:Math.round(per.p),
+        c:Math.round(per.c),f:Math.round(per.f),ic:"\U0001F4E6",online:true});
+      if(out.length>=12) break;
+    }
+    onlineState.results=out;
+  }catch(e){
+    onlineState.err=(e.name==="AbortError")
+      ? "That took too long. Check your connection and try again."
+      : "Couldn't reach the food database. You're either offline, or it's having a moment — Custom still works.";
+  }
+  onlineState.busy=false;
+  paintOnline();
+}
+function onlineHTML(){
+  if(onlineState.busy) return '<p class="tiny muted" style="text-align:center;padding:14px">Looking up “'+esc(onlineState.q)+'” online…</p>';
+  if(onlineState.err) return '<p class="tiny muted" style="text-align:center;padding:14px">'+esc(onlineState.err)+'</p>';
+  if(!onlineState.results) return "";
+  if(!onlineState.results.length)
+    return '<p class="tiny muted" style="text-align:center;padding:14px">Nothing online either. Custom lets you enter it once and keep it.</p>';
+  return '<div class="label" style="margin:12px 0 2px">From Open Food Facts</div>'+
+    '<p class="tiny muted" style="margin:0 0 6px">Packaged products, entered by the public — worth a glance before you add it.</p>'+
+    onlineState.results.map(foodRowHTML).join("");
+}
+function paintOnline(){
+  const el=$("#onlineOut"); if(!el) return;
+  el.innerHTML=onlineHTML();
+  bindFoodRows();
 }
 function isFav(name){return S.favs[S.active].indexOf(name)>=0;}
 function foodRowHTML(f){
@@ -1369,6 +1675,9 @@ function openEdit(id){
   $("#eSave").onclick=()=>{e.qty=qty;e.meal=$("#eMeal").value;persist();closeSheet();render();};
 }
 function addEntry(f,qty,meal){
+  if(f.online && !S.custom.some(x=>x.name===f.name))
+    S.custom.unshift({name:f.name,serving:f.serving,kcal:f.kcal,p:f.p||0,c:f.c||0,f:f.f||0,
+                      kw:"",ic:f.ic||"📦",cat:"snacks",fromOnline:true});
   const day=S.logs[S.active][S.date]||(S.logs[S.active][S.date]=[]);
   day.push({id:uid(),meal:meal,name:f.name,serving:f.serving,kcal:f.kcal,p:f.p||0,c:f.c||0,f:f.f||0,ic:f.ic||'🍽️',qty:qty,ts:Date.now()});
   const rec=S.recents[S.active].filter(n=>n!==f.name);rec.unshift(f.name);S.recents[S.active]=rec.slice(0,15);
@@ -2359,7 +2668,8 @@ function refreshSheet(){
 }
 function bindSheetBody(){
   const q=$("#foodQ");
-  if(q){q.oninput=()=>{if(q.value.trim())foodCat=null;$("#foodList").innerHTML=foodListHTML(q.value.trim());bindFoodRows();};bindFoodRows();
+  if(q){q.oninput=()=>{if(q.value.trim())foodCat=null;
+    if(q.value.trim()!==onlineState.q)onlineState={q:"",busy:false,err:"",results:null};$("#foodList").innerHTML=foodListHTML(q.value.trim());bindFoodRows();};bindFoodRows();
     if(!("ontouchstart" in window))q.focus();}
   if($("#pickAdd")){
     const upd=()=>{$("#qVal").textContent=pickedQty+"×";$("#qKcal").textContent=r0(pickedFood.kcal*pickedQty)+" kcal";};
@@ -2400,13 +2710,19 @@ function bindSheetBody(){
   }
 }
 function bindFoodRows(){
+  document.querySelectorAll("[data-online]").forEach(b=>b.onclick=()=>{
+    lookupOnline(b.dataset.online);
+  });
   document.querySelectorAll("[data-cat]").forEach(b=>b.onclick=()=>{
     foodCat=b.dataset.cat||null;
     const l=$("#foodList");
     l.innerHTML=foodListHTML("");bindFoodRows();l.scrollIntoView({block:"nearest"});
   });
   document.querySelectorAll("[data-food]").forEach(b=>b.onclick=()=>{
-    pickedFood=allFoods().find(f=>f.name===b.dataset.food);pickedQty=1;refreshSheet();
+    const nm=b.dataset.food;
+    pickedFood=allFoods().find(f=>f.name===nm)||
+      (onlineState.results||[]).find(f=>f.name===nm);
+    pickedQty=1;refreshSheet();
   });
   document.querySelectorAll("[data-star]").forEach(b=>b.onclick=ev=>{
     ev.stopPropagation();

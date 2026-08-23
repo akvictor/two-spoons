@@ -36,13 +36,20 @@ Inspired by the parts of LoseIt! and Cal AI that actually get used day to day.
   over you are across the last seven days, counting only days you actually logged — an
   unlogged day is unknown, not a surplus.
 - **Saved meals.** Bundle a meal you eat often into one entry and re-add it in a tap.
-- **542-item food database**, every entry with its own icon and a category, browsable as
+- **777-item food database**, every entry with its own icon and a category, browsable as
   well as searchable — pick Rice, Noodles, Small plates, Breakfast, Roti & Indian, Asian,
   Western, Protein, Veg, Fruit, Drinks, Snacks or Dessert and see everything in it, or
   just type. Heavy on Singapore hawker food (chicken rice, char kway teow, laksa, cai fan,
-  kway chap, zi char, dim sum, the full kopi/teh matrix, nyonya kueh) plus Japanese,
-  Korean, Thai, Vietnamese, Indian, Malay and Western staples, everyday groceries and
-  condiments. Paired with a 28-activity exercise database.
+  kway chap, zi char, dim sum, cai fan sides, the full kopi/teh matrix, nyonya kueh) plus
+  Japanese, Korean, Thai, Vietnamese, Indian, Malay, Taiwanese and Western staples, cafe
+  brunch, everyday groceries and condiments. Paired with a 28-activity exercise database.
+- **Online lookup when something isn't there.** Search, and under the results there's a
+  button that asks [Open Food Facts](https://world.openfoodfacts.org) — a free, public
+  food database needing no account or key. It only runs when you tap it, because tapping
+  it sends what you typed to someone else's server. It reads packaged and barcoded
+  products well and cooked hawker food poorly, which is the opposite of the built-in list,
+  so the two cover each other. Anything you add from it is kept on the device as a custom
+  food, so it works offline from then on.
 - **Your budget, your call.** The calculated figure is a starting point; override it with
   your own number any time from Today, Settings, or the welcome screen.
 - **Insights** — switch between a week and a month view for averages, a projected weekly
