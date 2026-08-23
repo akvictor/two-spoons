@@ -45,9 +45,19 @@ the address and the key on its own and starts syncing. They never see this page.
 
 ## If the button misbehaves
 
-The one-click deploy is known to sometimes finish with only a placeholder worker, or to
-skip creating the storage. If `/health` doesn't say `ok`, or the app keeps saying it
-can't reach the relay, set it up by hand — it's six minutes.
+Watch for this one — it happened on the first real run. The button can ignore the
+`/sync-worker` part of the link and build from the **root** of the repo instead. It then
+finds `index.html`, decides you are publishing a website, and deploys a copy of the
+tracker app rather than the relay. The giveaway: `/health` returns 404, and the Worker's
+settings say *"cannot be added to a Worker that only has static assets"* with
+**Bindings: 0**.
+
+Two fixes, either works:
+
+- **Point it at the right folder.** On the Worker: **Settings → Build → Build
+  configuration**, set **Root directory** to `sync-worker`, save. Then create the KV
+  namespace (below) and push a commit to trigger a rebuild.
+- **Or set it up by hand** from scratch — six minutes.
 
 <details>
 <summary><b>Manual setup</b></summary>
