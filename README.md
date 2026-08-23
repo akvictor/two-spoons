@@ -43,13 +43,17 @@ Inspired by the parts of LoseIt! and Cal AI that actually get used day to day.
   kway chap, zi char, dim sum, cai fan sides, the full kopi/teh matrix, nyonya kueh) plus
   Japanese, Korean, Thai, Vietnamese, Indian, Malay, Taiwanese and Western staples, cafe
   brunch, everyday groceries and condiments. Paired with a 28-activity exercise database.
-- **A photo of the meal.** Tap any logged item and add a picture — from the camera or the
-  photo library. It shows as the item's thumbnail on the day's list and full size when you
-  tap it. Photos live in their own database rather than in the saved state: a 6 MB phone
-  photo is stored at about 48 KB, and keeping them separate is what lets backups and
-  invite codes stay small enough to paste as text. The trade is that photos stay on the
-  phone that took them — they don't travel to your partner's copy. Settings shows how much
-  space they're using and can clear them.
+- **A photo of the meal, and you both see them.** Tap any logged item and add a picture —
+  camera or photo library. It becomes the item's thumbnail on the day's list, full size
+  when tapped, and it travels to your partner when you sync **by file**. A pasted code
+  stays text-sized and carries no photos; the file carries them, so AirDrop or WhatsApp
+  that across. Photos are stored apart from the saved state (a 6 MB phone photo lands at
+  roughly 30–50 KB), which is what keeps codes small enough to paste at all. The last 45
+  days travel, up to 200 photos, so a year of meals never becomes a file nobody can send.
+  Settings shows the space used and can clear them.
+- **Whose day you're looking at.** Once you're paired, two chips at the top of Today switch
+  between you. Your partner's day is read-only — their phone owns their log — so you can
+  see what they ate and the photo they took, but nothing you tap can change it.
 - **Barcode scanning.** Add food → **Scan** opens the camera; hold a packaged product's
   barcode in the box and it looks the product up and drops it into the normal portion
   picker. Nothing the camera sees leaves the phone — only the digits are sent.

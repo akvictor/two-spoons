@@ -255,6 +255,13 @@ table.data,.num,.fname,.fsub{-webkit-user-select:text;user-select:text}
 #toast.show{transform:translate(-50%,0);opacity:1;visibility:visible;pointer-events:auto}
 #toast button{color:var(--bg);font-weight:var(--wt-h);text-decoration:underline;flex:none}
 @media (prefers-reduced-motion:reduce){#toast{transition:opacity .18s ease,visibility .18s}}
+.whorow{display:flex;gap:6px;margin:2px 0 10px}
+.who{display:flex;align-items:center;gap:7px;flex:1;justify-content:center;padding:7px 10px;
+  border:var(--bw-s) solid var(--edge);border-radius:999px;background:var(--card);
+  font-size:13px;font-weight:var(--wt);color:var(--ink3)}
+.who.on{background:var(--card2);color:var(--ink);border-color:var(--ink3)}
+.who .av{flex:none}
+.glass[disabled]{opacity:.85}
 .eicwrap{width:34px;height:34px;border-radius:8px;overflow:hidden;flex:none;padding:0;display:block}
 .eicwrap img{width:100%;height:100%;object-fit:cover;display:block}
 .mealphoto{width:100%;border-radius:var(--rad-s);overflow:hidden;margin:2px 0 10px;
@@ -1360,7 +1367,7 @@ function topbarHTML(){
     return '<div class="topbar"><div class="datebar"><div style="width:40px"></div><div class="grow"><div class="dlabel">'+
       (S.tab==="us"?"Journey":"Settings")+'</div></div><div style="width:40px"></div></div></div>';
   }
-  const me=meProf();
+  const me=prof();   /* whoever's day is on screen, not necessarily you */
   return '<div class="topbar">'+
     '<div class="datebar">'+
       '<button class="dnav" data-act="prevday" aria-label="Previous day">&lsaquo;</button>'+
@@ -1388,19 +1395,49 @@ function ringSVG(eaten,bud,size,color){
    '<text x="50%" y="46%" text-anchor="middle" font-size="'+size*0.2+'" font-weight="800" fill="var(--ink)" class="num">'+r0(eaten)+'</text>'+
    '<text x="50%" y="62%" text-anchor="middle" font-size="'+size*0.085+'" fill="var(--ink3)">of '+r0(bud)+' kcal</text></svg>';
 }
+/* whose day is on screen. You can look at your partner's, but not edit it —
+   their phone owns their log, and anything typed here would sync back to them. */
+function viewEntry(id){
+  const e=entries(S.active,S.date).find(x=>x.id===id); if(!e)return;
+  openSheet('<h3>'+esc(e.name)+'</h3>'+
+    '<div class="tiny muted num" style="margin-top:-8px">'+(e.qty!==1?e.qty+' × ':'')+esc(e.serving||"serving")+
+      ' · '+r0(e.kcal*e.qty)+' kcal · P'+r0(e.p*e.qty)+' C'+r0(e.c*e.qty)+' F'+r0(e.f*e.qty)+'</div>'+
+    (e.photo?'<div class="mealphoto big" style="margin-top:12px"><img data-photo="'+esc(e.id)+'" alt=""></div>'
+            :'<p class="tiny muted" style="margin-top:12px">No photo on this one.</p>')+
+    '<p class="tiny muted">'+esc(themProf().name||"Your partner")+' logged this — only they can change it.</p>'+
+    '<div class="row"><button class="btn grow" data-xclose>Close</button></div>');
+  paintPhotos();
+}
+function viewingPartner(){ return S.active!==S.me; }
+function whoSwitchHTML(){
+  if(!S.paired && !anyData(partnerOf(S.me))) return "";
+  const me=meProf(), them=themProf();
+  const chip=(pr,on)=>'<button class="who'+(on?" on":"")+'" data-act="who" data-pid="'+pr.id+'">'+
+    avatarHTML(pr,22)+'<span>'+esc(pr.name||(pr.id===S.me?"You":"Them"))+'</span></button>';
+  return '<div class="whorow">'+chip(me,S.active===S.me)+chip(them,S.active!==S.me)+'</div>';
+}
+function anyData(pid){
+  for(const d in (S.logs[pid]||{})) if(S.logs[pid][d].length) return true;
+  return false;
+}
 function todayHTML(){
   const p=prof(), base=baseBudget(p), burn=dayBurn(p.id,S.date), bud=base+burn;
   const eaten=dayKcal(p.id,S.date), left=bud-eaten;
   const P=dayMacro(p.id,S.date,"p"),C=dayMacro(p.id,S.date,"c"),F=dayMacro(p.id,S.date,"f");
   const tP=r0(bud*0.3/4),tC=r0(bud*0.4/4),tF=r0(bud*0.3/9);
   const col=colorOf(p.id);
-  let html='<section class="card"><div class="ringwrap">'+ringSVG(eaten,bud,128,col)+
+  const ro=viewingPartner();
+  let html=whoSwitchHTML()+
+    (ro?'<p class="tiny muted" style="margin:2px 2px 10px;text-align:center">'+
+        esc(p.name||"Their")+'\u2019s day, as it reached this phone. Sync to catch up on anything newer.</p>':"")+
+    '<section class="card"><div class="ringwrap">'+ringSVG(eaten,bud,128,col)+
     '<div class="ringnums grow"><div class="label">'+(left>=0?"Remaining":"Over budget")+'</div>'+
     '<div class="big num '+(left<0?"over":"")+'">'+r0(Math.abs(left))+'</div>'+
     '<div class="tiny muted">kcal</div>'+
     (streak(p.id)>1?'<div class="tiny" style="margin-top:6px">🔥 <b class="num">'+streak(p.id)+'</b>-day streak</div>':"")+
     '</div></div>'+
-    '<div class="eqn"><button class="bit" data-act="budget">Budget <b class="num">'+base+'</b>'+(p.override?' ✏️':'')+'</button>'+
+    '<div class="eqn">'+(ro?'<span class="bit">Budget <b class="num">'+base+'</b></span>'
+      :'<button class="bit" data-act="budget">Budget <b class="num">'+base+'</b>'+(p.override?' ✏️':'')+'</button>')+
       (burn?'<span class="bit">+ Exercise <b class="num" style="color:var(--burn)">'+r0(burn)+'</b></span>':"")+
       '<span class="bit">− Eaten <b class="num">'+r0(eaten)+'</b></span></div>'+
     '<div class="macros">'+macroHTML("Protein",P,tP,"pro")+macroHTML("Carbs",C,tC,"carb")+macroHTML("Fat",F,tF,"fat")+'</div>'+
@@ -1409,32 +1446,34 @@ function todayHTML(){
   const w=dayWater(p.id,S.date), wt=p.waterTarget||8;
   html+='<section class="card"><div class="row" style="justify-content:space-between"><span class="label">Water</span>'+
     '<span class="tiny muted num">'+w+' / '+wt+' glasses</span></div>'+
-    '<div class="glasses">'+Array.from({length:wt},(_,i)=>'<button class="glass '+(i<w?"on":"")+'" data-act="water" data-n="'+(i+1)+'" aria-label="'+(i+1)+' glasses"></button>').join("")+
+    '<div class="glasses">'+Array.from({length:wt},(_,i)=>'<button class="glass '+(i<w?"on":"")+'"'+
+      (ro?' disabled':' data-act="water" data-n="'+(i+1)+'"')+' aria-label="'+(i+1)+' glasses"></button>').join("")+
     (w>wt?'<span class="tiny num" style="align-self:center;color:var(--water)">+'+(w-wt)+'</span>':"")+'</div>'+
-    '<div class="row" style="margin-top:10px"><button class="btn small" data-act="waterminus">−</button><button class="btn small" data-act="waterplus">+ Glass</button></div></section>';
+    (ro?"":'<div class="row" style="margin-top:10px"><button class="btn small" data-act="waterminus">−</button><button class="btn small" data-act="waterplus">+ Glass</button></div>')+'</section>';
   /* meals */
   const es=entries(p.id,S.date);
   for(const m of MEALS){
     const list=es.filter(e=>e.meal===m);
     const sub=list.reduce((a,e)=>a+e.kcal*e.qty,0);
     html+='<div class="meal"><div class="mealhead"><span class="label">'+m+'</span><span class="grow"></span>'+
-      (list.length>1?'<button class="sv" data-act="savemeal" data-meal="'+m+'">save as meal</button>':"")+
+      (!ro&&list.length>1?'<button class="sv" data-act="savemeal" data-meal="'+m+'">save as meal</button>':"")+
       '<span class="tiny muted num">'+(sub?r0(sub)+" kcal":"")+'</span></div>';
     for(const e of list){
-      html+='<button class="entry" data-act="edit" data-id="'+e.id+'"><span class="eic'+(e.photo?' eicwrap':'')+'">'+
+      html+='<button class="entry" data-act="'+(ro?"viewent":"edit")+'" data-id="'+e.id+'"><span class="eic'+(e.photo?' eicwrap':'')+'">'+
         (e.photo?'<img data-photo="'+esc(e.id)+'" alt="">':(e.ic||"🍽️"))+'</span><span class="grow"><span style="font-weight:600">'+esc(e.name)+'</span><br><span class="tiny muted num">'+(e.qty!==1?e.qty+" × ":"")+esc(e.serving||"serving")+'</span></span><span class="kc num">'+r0(e.kcal*e.qty)+'</span></button>';
     }
-    html+=usualsHTML(m)+
-      '<button class="addline" data-act="add" data-meal="'+m+'">+ Add food</button></div>';
+    html+=(ro?(list.length?"":'<p class="tiny muted" style="padding:6px 2px">Nothing logged.</p>')
+             :usualsHTML(m)+'<button class="addline" data-act="add" data-meal="'+m+'">+ Add food</button>')+'</div>';
   }
   /* exercise */
   const xs=exEntries(p.id,S.date);
   html+='<div class="meal"><div class="mealhead"><span class="label">Exercise</span><span class="tiny muted num">'+(burn?"+"+r0(burn)+" kcal":"")+'</span></div>';
   for(const e of xs){
-    html+='<button class="entry ex" data-act="editex" data-id="'+e.id+'"><span class="eic">💪</span><span class="grow"><span style="font-weight:600">'+esc(e.name)+'</span><br><span class="tiny muted num">'+e.mins+' min</span></span><span class="kc num">+'+r0(e.kcal)+'</span></button>';
+    html+='<button class="entry ex"'+(ro?'':' data-act="editex" data-id="'+e.id+'"')+'><span class="eic">💪</span><span class="grow"><span style="font-weight:600">'+esc(e.name)+'</span><br><span class="tiny muted num">'+e.mins+' min</span></span><span class="kc num">+'+r0(e.kcal)+'</span></button>';
   }
-  html+='<button class="addline" data-act="addex">+ Add exercise</button></div>';
-  if(!es.length && entries(p.id,addDays(S.date,-1)).length){
+  html+=(ro?(xs.length?"":'<p class="tiny muted" style="padding:6px 2px">Nothing logged.</p>')
+           :'<button class="addline" data-act="addex">+ Add exercise</button>')+'</div>';
+  if(!ro && !es.length && entries(p.id,addDays(S.date,-1)).length){
     html+='<button class="btn" style="width:100%" data-act="copyday">📋 Copy food from yesterday</button>';
   }
   return html;
@@ -1689,6 +1728,55 @@ function openPhotoView(id,name){
     '<div class="mealphoto big"><img data-photo="'+esc(id)+'" alt=""></div>'+
     '<div class="row" style="margin-top:10px"><button class="btn grow" data-xclose>Close</button></div>');
   paintPhotos();
+}
+
+/* ---- photos across the sync ----
+   Photos are far too big to sit in a code you paste into WhatsApp, but they travel
+   fine in a file. So the file carries them and the pasted code doesn't, and both
+   say which they are. Recent days only, and a ceiling on the count, so a year of
+   meals never turns into a file nobody can send. */
+const PHOTO_SYNC_DAYS=45, PHOTO_SYNC_MAX=200;
+async function photosForExport(){
+  if(!PhotoStore.ready)return {photos:{},skipped:0};
+  const cutoff=addDays(todayStr(),-PHOTO_SYNC_DAYS);
+  const wanted=[];
+  for(const pid of ["a","b"])
+    for(const d in (S.logs[pid]||{})){
+      if(d<cutoff)continue;
+      for(const e of S.logs[pid][d]) if(e.photo) wanted.push({id:e.id,d:d});
+    }
+  wanted.sort((x,y)=>x.d<y.d?1:-1);              /* newest first, so a cap keeps the recent ones */
+  const take=wanted.slice(0,PHOTO_SYNC_MAX);
+  const photos={};
+  for(const w of take){
+    try{ const data=await PhotoStore.get(w.id); if(data)photos[w.id]=data; }catch(e){}
+  }
+  return {photos:photos,skipped:Math.max(0,wanted.length-take.length)};
+}
+async function backupJSONWithPhotos(){
+  const p=await photosForExport();
+  return JSON.stringify({app:"twospoons",exportedAt:new Date().toISOString(),
+    state:exportableState(),photos:p.photos});
+}
+async function importPhotos(obj){
+  if(!obj||!obj.photos)return 0;
+  if(!PhotoStore.ready)await PhotoStore.open();
+  if(!PhotoStore.ready)return 0;
+  let n=0;
+  for(const id in obj.photos){
+    const data=obj.photos[id];
+    if(typeof data!=="string"||data.indexOf("data:image/")!==0)continue;
+    const ent=findEntry(id);
+    if(!ent)continue;                             /* only photos for entries we actually took on */
+    try{ await PhotoStore.put(id,data); photoCache[id]=data; ent.photo=1; n++; }catch(e){}
+  }
+  if(n)persist();
+  return n;
+}
+function photoSyncNote(count,skipped){
+  if(!count)return "No meal photos in range to send.";
+  return count+" meal photo"+(count===1?"":"s")+" included"+
+    (skipped?", "+skipped+" older ones left out":"")+".";
 }
 
 /* ================= barcode =================
@@ -2822,7 +2910,7 @@ function exportableState(){
 function backupJSON(){return JSON.stringify({app:"twospoons",exportedAt:new Date().toISOString(),state:exportableState()});}
 function backupName(){return "twospoons-"+todayStr()+".json";}
 async function downloadBackup(){
-  const json=backupJSON(), fn=backupName();
+  const json=await backupJSONWithPhotos(), fn=backupName();
   if(window.claude&&typeof claude.use==="function"){
     try{const dl=await claude.use("downloads");if(dl){await dl.save({filename:fn,data:json});S.backedUpAt=Date.now();persist();return true;}}catch(e){}
   }
@@ -2834,7 +2922,7 @@ async function downloadBackup(){
   }catch(e){return false;}
 }
 function doExport(){
-  const json=backupJSON();
+  const json=backupJSON();   /* the pasteable one stays text-sized; the file adds photos */
   const out=$("#exportOut");
   out.innerHTML='<textarea rows="3" readonly id="expTxt" style="margin-top:10px;font-size:16px">'+esc(json)+'</textarea>'+
    '<div class="row" style="margin-top:8px"><button class="btn small grow" id="expCopy">Copy to clipboard</button><button class="btn small grow" id="expDl">Download file</button></div>';
@@ -2877,25 +2965,32 @@ function mergeFrom(st,opts){
 function openInvite(){
   const json=backupJSON();
   openSheet('<h3>Invite '+esc(themProf().name||"your partner")+'</h3>'+
-    '<p class="tiny muted" style="margin-top:-6px">Send this code however you like — WhatsApp, email, AirDrop. On their phone they choose <b>Join my partner</b> and paste it in.</p>'+
+    '<p class="tiny muted" style="margin-top:-6px">On their phone they choose <b>Join my partner</b>, then paste the code or open the file.</p>'+
     '<textarea rows="3" readonly id="invTxt" style="margin-top:10px;font-size:16px">'+esc(json)+'</textarea>'+
     '<div class="row" style="margin-top:10px"><button class="btn grow primary" id="invCopy">Copy code</button>'+
-    '<button class="btn grow" id="invFile">Send as file</button></div>');
+    '<button class="btn grow" id="invFile">Send as file</button></div>'+
+    '<p class="tiny muted" style="margin:10px 2px 0" id="invNote">The code is small enough to paste anywhere, but carries no meal photos. '+
+    'The file carries them — AirDrop or WhatsApp it across.</p>');
   $("#invCopy").onclick=async()=>{
     try{await navigator.clipboard.writeText(json);}catch(e){$("#invTxt").select();document.execCommand("copy");}
     $("#invCopy").textContent="Copied ✓";
   };
   $("#invFile").onclick=async()=>{
+    $("#invFile").textContent="Gathering photos…";
+    const p=await photosForExport();
     const ok=await downloadBackup();
     $("#invFile").textContent=ok?"Saved ✓":"Copy the code instead";
+    const n=$("#invNote");
+    if(n&&ok)n.textContent=photoSyncNote(Object.keys(p.photos).length,p.skipped)+
+      " Send that file to "+(themProf().name||"your partner")+" — AirDrop, WhatsApp, email, whatever's easiest.";
   };
 }
 function doImport(){
-  openSheet('<h3>Import data</h3><p class="tiny muted" style="margin-top:-6px">Paste an export from the other phone, or choose the file.</p>'+
+  openSheet('<h3>Import data</h3><p class="tiny muted" style="margin-top:-6px">Paste an export from the other phone, or choose the file. The file brings their meal photos too; a pasted code doesn\'t.</p>'+
    '<textarea id="impTxt" rows="4" placeholder="Paste exported data here"></textarea>'+
    '<input type="file" id="impFile" accept=".json,application/json" style="margin-top:10px">'+
    '<div class="row" style="margin-top:12px"><button class="btn primary grow" id="impMerge">Merge into this phone</button></div>'+
-   '<p class="tiny muted">Merging combines both phones\' entries, exercise and weights. Profiles and settings on this phone are kept.</p>');
+   '<p class="tiny muted">Merging combines both phones\' entries, exercise, weights and photos. Profiles and settings on this phone are kept.</p>');
   $("#impFile").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{$("#impTxt").value=r.result;};r.readAsText(f);};
   $("#impMerge").onclick=()=>{
     let obj;try{obj=JSON.parse($("#impTxt").value);}catch(e){alert("That doesn't look like a valid export.");return;}
@@ -2903,8 +2998,12 @@ function doImport(){
     if(!st.logs||!st.profiles){alert("That doesn't look like a Two Spoons export.");return;}
     mergeFrom(st);
     S.paired=true;
-    persist();closeSheet();render();
-    alert("Synced ✓");
+    persist();
+    importPhotos(obj).then(n=>{
+      closeSheet();render();
+      alert(n?("Synced ✓  "+n+" meal photo"+(n===1?"":"s")+" came across too.")
+             :"Synced ✓"+(obj.photos?"":"\n\nNo photos in that one — send the file rather than the code if you want those."));
+    });
   };
 }
 /* ================= Setup: one phone, one person ================= */
@@ -3065,7 +3164,8 @@ function bindMain(){
     el.onclick=()=>{
       const a=el.dataset.act, pid=el.dataset.pid;
       if(a==="tab"){S.tab=el.dataset.tab;render();}
-      else if(a==="who"){S.active=pid;persist();render();}
+      else if(a==="who"){S.active=el.dataset.pid||S.me;persist();render();}
+      else if(a==="viewent"){viewEntry(el.dataset.id);}
       else if(a==="prevday"){hideToast();S.date=addDays(S.date,-1);render();}
       else if(a==="nextday"){if(S.date<todayStr()){hideToast();S.date=addDays(S.date,1);render();}}
       else if(a==="gotoday"){S.date=todayStr();render();}
