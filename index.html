@@ -255,6 +255,13 @@ table.data,.num,.fname,.fsub{-webkit-user-select:text;user-select:text}
 #toast.show{transform:translate(-50%,0);opacity:1;visibility:visible;pointer-events:auto}
 #toast button{color:var(--bg);font-weight:var(--wt-h);text-decoration:underline;flex:none}
 @media (prefers-reduced-motion:reduce){#toast{transition:opacity .18s ease,visibility .18s}}
+.eicwrap{width:34px;height:34px;border-radius:8px;overflow:hidden;flex:none;padding:0;display:block}
+.eicwrap img{width:100%;height:100%;object-fit:cover;display:block}
+.mealphoto{width:100%;border-radius:var(--rad-s);overflow:hidden;margin:2px 0 10px;
+  background:var(--card2);border:var(--bw-s) solid var(--edge)}
+.mealphoto img{width:100%;display:block;max-height:260px;object-fit:cover}
+.mealphoto.big img{max-height:70vh;object-fit:contain}
+.mealphoto.gone,.eicwrap.gone{display:none}
 .nowrap{white-space:nowrap;flex:none}
 .scanbox{position:relative;width:100%;aspect-ratio:4/3;border-radius:var(--rad-s);overflow:hidden;
   background:#000;border:var(--bw-s) solid var(--edge)}
@@ -1345,6 +1352,8 @@ function render(){
   html+=tabsHTML();
   app.innerHTML=html;
   bindMain();
+  paintPhotos();
+  if(S.tab==="settings")paintPhotoUsage();
 }
 function topbarHTML(){
   if(S.tab==="settings"||S.tab==="us"){
@@ -1412,7 +1421,8 @@ function todayHTML(){
       (list.length>1?'<button class="sv" data-act="savemeal" data-meal="'+m+'">save as meal</button>':"")+
       '<span class="tiny muted num">'+(sub?r0(sub)+" kcal":"")+'</span></div>';
     for(const e of list){
-      html+='<button class="entry" data-act="edit" data-id="'+e.id+'"><span class="eic">'+(e.ic||"🍽️")+'</span><span class="grow"><span style="font-weight:600">'+esc(e.name)+'</span><br><span class="tiny muted num">'+(e.qty!==1?e.qty+" × ":"")+esc(e.serving||"serving")+'</span></span><span class="kc num">'+r0(e.kcal*e.qty)+'</span></button>';
+      html+='<button class="entry" data-act="edit" data-id="'+e.id+'"><span class="eic'+(e.photo?' eicwrap':'')+'">'+
+        (e.photo?'<img data-photo="'+esc(e.id)+'" alt="">':(e.ic||"🍽️"))+'</span><span class="grow"><span style="font-weight:600">'+esc(e.name)+'</span><br><span class="tiny muted num">'+(e.qty!==1?e.qty+" × ":"")+esc(e.serving||"serving")+'</span></span><span class="kc num">'+r0(e.kcal*e.qty)+'</span></button>';
     }
     html+=usualsHTML(m)+
       '<button class="addline" data-act="add" data-meal="'+m+'">+ Add food</button></div>';
@@ -1536,6 +1546,151 @@ function foodListHTML(q){
   }
   return html;
 }
+/* ================= meal photos =================
+   A photo is thousands of times bigger than the line of text it illustrates, so
+   photos live in their own database and the entry only remembers that it has one.
+   That keeps the saved state small enough for localStorage, and keeps backups and
+   invite codes as text you can actually paste. The trade: photos stay on the phone
+   that took them — they don't travel to your partner's copy. */
+const PhotoStore={
+  db:null, ready:false, tried:false,
+  async open(){
+    if(this.tried)return this.db;
+    this.tried=true;
+    this.db=await new Promise(res=>{
+      if(!window.indexedDB)return res(null);
+      let rq; try{ rq=indexedDB.open("twospoons_photos",1); }catch(e){ return res(null); }
+      rq.onupgradeneeded=()=>{ try{ rq.result.createObjectStore("p"); }catch(e){} };
+      rq.onsuccess=()=>res(rq.result);
+      rq.onerror=()=>res(null); rq.onblocked=()=>res(null);
+      setTimeout(()=>res(null),2500);
+    });
+    this.ready=!!this.db;
+    return this.db;
+  },
+  tx(mode,fn){
+    return new Promise((res,rej)=>{
+      if(!this.db)return rej(new Error("no store"));
+      let t; try{ t=this.db.transaction("p",mode); }catch(e){ return rej(e); }
+      const rq=fn(t.objectStore("p"));
+      rq.onsuccess=()=>res(rq.result);
+      rq.onerror=()=>rej(rq.error||new Error("failed"));
+    });
+  },
+  put(id,data){ return this.tx("readwrite",s=>s.put(data,id)); },
+  get(id){ return this.tx("readonly",s=>s.get(id)); },
+  del(id){ return this.tx("readwrite",s=>s.delete(id)); },
+  keys(){ return this.tx("readonly",s=>s.getAllKeys()); },
+  all(){ return this.tx("readonly",s=>s.getAll()); },
+  async usage(){
+    try{
+      const v=await this.all();
+      return {count:v.length, bytes:v.reduce((a,b)=>a+(b?b.length:0),0)};
+    }catch(e){ return {count:0,bytes:0}; }
+  },
+  async clear(){ try{ await this.tx("readwrite",s=>s.clear()); }catch(e){} }
+};
+const photoCache={};
+function photoBytesLabel(b){
+  return b<1024?b+" B":b<1024*1024?Math.round(b/1024)+" KB":(b/1048576).toFixed(1)+" MB";
+}
+/* every entry id that still exists, so abandoned photos can be swept up */
+function livePhotoIds(){
+  const ids={};
+  for(const pid of ["a","b"])
+    for(const d in (S.logs[pid]||{}))
+      for(const e of S.logs[pid][d]) if(e.photo) ids[e.id]=1;
+  return ids;
+}
+async function prunePhotos(){
+  if(!PhotoStore.ready)return 0;
+  try{
+    const live=livePhotoIds(), keys=await PhotoStore.keys();
+    let n=0;
+    for(const k of keys) if(!live[k]){ await PhotoStore.del(k); delete photoCache[k]; n++; }
+    return n;
+  }catch(e){ return 0; }
+}
+/* shrink to something a phone screen can show but a database won't groan under */
+function shrinkImage(file,maxEdge,quality){
+  return new Promise((res,rej)=>{
+    const fr=new FileReader();
+    fr.onerror=()=>rej(new Error("read"));
+    fr.onload=()=>{
+      const img=new Image();
+      img.onerror=()=>rej(new Error("decode"));
+      img.onload=()=>{
+        const m=Math.max(img.width,img.height)||1;
+        const sc=Math.min(1,maxEdge/m);
+        const w=Math.max(1,Math.round(img.width*sc)), h=Math.max(1,Math.round(img.height*sc));
+        const cv=document.createElement("canvas"); cv.width=w; cv.height=h;
+        cv.getContext("2d").drawImage(img,0,0,w,h);
+        try{ res(cv.toDataURL("image/jpeg",quality)); }catch(e){ rej(new Error("encode")); }
+      };
+      img.src=fr.result;
+    };
+    fr.readAsDataURL(file);
+  });
+}
+function pickMealPhoto(entryId,done){
+  const inp=document.createElement("input");
+  inp.type="file"; inp.accept="image/*";      /* no capture attribute: phones then offer
+                                                 both the camera and the photo library */
+  inp.onchange=async()=>{
+    const file=inp.files&&inp.files[0]; if(!file)return;
+    let data;
+    try{ data=await shrinkImage(file,512,0.72); }
+    catch(e){ alert("That file couldn't be read as a photo. Try another one."); return; }
+    try{ await PhotoStore.put(entryId,data); }
+    catch(e){
+      alert("There wasn't room to save that photo. Settings shows how much space photos "+
+            "are using, and lets you clear them.");
+      return;
+    }
+    photoCache[entryId]=data;
+    const ent=findEntry(entryId);
+    if(ent){ ent.photo=1; persist(); }
+    if(done)done();
+  };
+  inp.click();
+}
+function findEntry(id){
+  for(const pid of ["a","b"])
+    for(const d in (S.logs[pid]||{})){
+      const hit=S.logs[pid][d].find(e=>e.id===id);
+      if(hit)return hit;
+    }
+  return null;
+}
+async function removeMealPhoto(entryId,done){
+  try{ await PhotoStore.del(entryId); }catch(e){}
+  delete photoCache[entryId];
+  const ent=findEntry(entryId);
+  if(ent){ delete ent.photo; persist(); }
+  if(done)done();
+}
+/* fill in <img data-photo="id"> after a render, without triggering another one */
+async function paintPhotos(){
+  const imgs=[...document.querySelectorAll("img[data-photo]")].filter(i=>!i.src);
+  if(!imgs.length)return;
+  await PhotoStore.open();
+  for(const img of imgs){
+    const id=img.dataset.photo;
+    let data=photoCache[id];
+    if(data===undefined){
+      try{ data=await PhotoStore.get(id); }catch(e){ data=null; }
+      photoCache[id]=data||null;
+    }
+    if(data)img.src=data; else img.closest(".mealphoto,.eicwrap")?.classList.add("gone");
+  }
+}
+function openPhotoView(id,name){
+  openSheet('<h3>'+esc(name)+'</h3>'+
+    '<div class="mealphoto big"><img data-photo="'+esc(id)+'" alt=""></div>'+
+    '<div class="row" style="margin-top:10px"><button class="btn grow" data-xclose>Close</button></div>');
+  paintPhotos();
+}
+
 /* ================= barcode =================
    EAN-13, EAN-8 and UPC-A, decoded here rather than by the browser: Safari ships
    BarcodeDetector switched off, so on an iPhone the native one isn't there. Where a
@@ -1961,7 +2116,9 @@ function openEdit(id){
   openSheet('<h3>'+esc(e.name)+'</h3><div class="tiny muted num" style="margin-top:-8px">'+esc(e.serving||"serving")+' · '+e.kcal+' kcal each</div>'+
    '<div class="qtyrow"><span class="tiny muted">Portion</span><div class="stepper"><button id="eMinus">−</button><span class="val num" id="eVal">'+e.qty+'×</span><button id="ePlus">+</button></div><span class="grow"></span><b class="num" id="eKcal">'+r0(e.kcal*e.qty)+' kcal</b></div>'+
    '<div class="frow"><div><div class="flabel">Meal</div><select id="eMeal">'+MEALS.map(m=>'<option '+(m===e.meal?"selected":"")+'>'+m+'</option>').join("")+'</select></div></div>'+
+   '<div id="photoRow">'+photoRowHTML(e)+'</div>'+
    '<div class="row"><button class="btn danger" id="eDel">Delete</button><button class="btn primary grow" id="eSave">Save</button></div>');
+  bindPhotoRow(e);
   let qty=e.qty;
   const upd=()=>{$("#eVal").textContent=qty+"×";$("#eKcal").textContent=r0(e.kcal*qty)+" kcal";};
   $("#eMinus").onclick=()=>{qty=Math.max(0.25,+(qty-0.25).toFixed(2));upd();};
@@ -1972,6 +2129,48 @@ function openEdit(id){
     persist();closeSheet();render();offerUndo("Removed "+nm,S.active,S.date,before);
   };
   $("#eSave").onclick=()=>{e.qty=qty;e.meal=$("#eMeal").value;persist();closeSheet();render();};
+}
+async function paintPhotoUsage(){
+  const el=$("#photoUse"); if(!el)return;
+  if(!PhotoStore.ready){ el.textContent="Meal photos aren't available in this browser."; return; }
+  const u=await PhotoStore.usage();
+  if(!u.count){ el.innerHTML="No meal photos yet. Tap any logged item to add one."; return; }
+  el.innerHTML=u.count+" meal photo"+(u.count===1?"":"s")+", using <b>"+photoBytesLabel(u.bytes)+"</b>. "+
+    "They stay on this phone and aren't part of a backup or an invite."+
+    '<div class="row" style="margin-top:8px"><button class="btn small" id="pClear">Delete all photos</button></div>';
+  const b=$("#pClear");
+  if(b)b.onclick=async()=>{
+    if(!confirm("Delete all "+u.count+" meal photos? The entries themselves stay."))return;
+    await PhotoStore.clear();
+    for(const k in photoCache)delete photoCache[k];
+    for(const pid of ["a","b"])
+      for(const d in (S.logs[pid]||{}))
+        for(const e of S.logs[pid][d]) delete e.photo;
+    persist(); render();
+  };
+}
+function photoRowHTML(e){
+  if(!PhotoStore.ready)
+    return '<p class="tiny muted" style="margin:2px 0 10px">Photos need the browser\'s own database, '+
+      'which this browser isn\'t giving the page. Everything else still works.</p>';
+  if(e.photo)
+    return '<div class="mealphoto"><img data-photo="'+esc(e.id)+'" alt=""></div>'+
+      '<div class="row" style="margin-bottom:10px"><button class="btn small grow" id="pReplace">Replace photo</button>'+
+      '<button class="btn small" id="pRemove">Remove</button></div>';
+  return '<div class="row" style="margin-bottom:10px"><button class="btn small grow" id="pAdd">Add a photo</button></div>'+
+    '<p class="tiny muted" style="margin:-4px 0 10px">Stays on this phone — photos aren\'t part of a backup or an invite.</p>';
+}
+function bindPhotoRow(e){
+  const redraw=()=>{
+    const row=$("#photoRow"); if(!row)return;
+    row.innerHTML=photoRowHTML(e); bindPhotoRow(e); paintPhotos();
+  };
+  if($("#pAdd"))$("#pAdd").onclick=()=>pickMealPhoto(e.id,redraw);
+  if($("#pReplace"))$("#pReplace").onclick=()=>pickMealPhoto(e.id,redraw);
+  if($("#pRemove"))$("#pRemove").onclick=()=>removeMealPhoto(e.id,()=>{redraw();});
+  const shot=document.querySelector("#photoRow .mealphoto");
+  if(shot&&e.photo)shot.onclick=()=>openPhotoView(e.id,e.name);
+  paintPhotos();
 }
 function addEntry(f,qty,meal){
   if(f.online && !S.custom.some(x=>x.name===f.name))
@@ -2490,6 +2689,7 @@ function settingsHTML(){
    '<div class="row" style="justify-content:space-between"><span class="tiny">Kept in <b>'+Store.where()+'</b></span>'+
    '<span class="pill '+(Store.saving()?"good":"over")+'">'+(Store.saving()?"Saving on":"Not saving")+'</span></div>'+
    (Store.saving()?"":'<p class="tiny muted" style="margin:10px 0 0">Keep a backup file and restore it when you come back, or open the app file directly where saving works normally.</p>')+
+   '<div id="photoUse" class="tiny muted" style="margin:10px 0 0">Checking photos…</div>'+
    '</section>';
   if(S.garminSeen||S.garminState){
     const st=S.garminState||{};
@@ -3201,7 +3401,9 @@ function garminAgo(iso){
   const saved=await Store.load();
   if(saved&&saved.profiles&&saved.logs)S=migrate(saved);
   S.tab="today"; S.date=todayStr();
+  await PhotoStore.open();
   render();
+  prunePhotos().then(n=>{ if(n)paintPhotos(); }).catch(()=>{});
   garminSync().then(res=>{
     if(res.reason==="nofile")return;          // sync not set up; stay silent
     S.garminState=res;
