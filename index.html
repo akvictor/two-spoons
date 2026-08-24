@@ -2271,9 +2271,9 @@ function addEntry(f,qty,meal){
   persist();
 }
 /* ================= Exercise sheet ================= */
-let pickedEx=null, exMins=30, exTab="activity", garminRows=null, garminErr="";
+let pickedEx=null, exMins=30, exTab="activity";
 function openAddEx(){
-  pickedEx=null; exMins=30; exTab="activity"; garminRows=null; garminErr="";
+  pickedEx=null; exMins=30; exTab="activity";
   openSheet(exSheetHTML()); bindExSheet();
 }
 function exSheetHTML(){
@@ -2289,7 +2289,6 @@ function exSheetHTML(){
     '<div class="seg">'+
       '<button data-xt="activity" class="'+(exTab==="activity"?"on":"")+'">Activity</button>'+
       '<button data-xt="manual" class="'+(exTab==="manual"?"on":"")+'">Manual</button>'+
-      '<button data-xt="import" class="'+(exTab==="import"?"on":"")+'">Garmin CSV</button>'+
     '</div><div id="exBody">'+exBodyHTML()+'</div>';
 }
 function exBodyHTML(){
@@ -2300,84 +2299,10 @@ function exBodyHTML(){
       '<div><div class="flabel">Calories burned</div><input id="mK" type="number" inputmode="numeric" placeholder="420"></div></div>'+
       '<button class="btn primary" style="width:100%" id="mSave">Add exercise</button>';
   }
-  if(exTab==="import"){
-    let h='<p class="tiny muted" style="margin:4px 0 10px">In Garmin Connect on a computer: <b>Activities</b> → <b>All Activities</b> → the <b>Export CSV</b> button. Then drop the file here, or paste its contents.</p>'+
-      '<input type="file" id="gFile" accept=".csv,text/csv">'+
-      '<textarea id="gTxt" rows="3" placeholder="…or paste the CSV here" style="margin-top:10px"></textarea>'+
-      '<button class="btn primary" style="width:100%;margin-top:10px" id="gGo">Read file</button>';
-    if(garminErr)h+='<p class="tiny" style="color:var(--over);margin-top:10px">'+esc(garminErr)+'</p>';
-    if(garminRows&&garminRows.length){
-      h+='<div class="label" style="margin:14px 0 4px">Found '+garminRows.length+' activities</div>';
-      for(const it of garminRows.slice(0,12)){
-        h+='<div class="foodrow"><span class="grow"><span class="fname">'+esc(it.name)+'</span><br><span class="fsub num">'+niceDate(it.date)+(it.mins?' · '+it.mins+' min':"")+'</span></span><b class="num" style="color:var(--burn)">+'+it.kcal+'</b></div>';
-      }
-      if(garminRows.length>12)h+='<p class="tiny muted" style="margin:6px 0 0">…and '+(garminRows.length-12)+' more.</p>';
-      h+='<button class="btn primary" style="width:100%;margin-top:12px" id="gAdd">Add all to '+esc(prof().name)+'</button>'+
-         '<p class="tiny muted">Importing the same file twice will not duplicate anything.</p>';
-    }
-    return h;
-  }
   return '<input id="exQ" placeholder="Search activity… (e.g. run, badminton)" autocomplete="off">'+
     '<div id="exList">'+exListHTML("")+'</div>';
 }
 /* --- CSV --- */
-function parseCSV(text){
-  const rows=[];let row=[],cur="",q=false;
-  for(let i=0;i<text.length;i++){
-    const ch=text[i];
-    if(q){
-      if(ch==='"'){ if(text[i+1]==='"'){cur+='"';i++;} else q=false; }
-      else cur+=ch;
-    }else{
-      if(ch==='"')q=true;
-      else if(ch===","){row.push(cur);cur="";}
-      else if(ch==="\n"){row.push(cur);cur="";rows.push(row);row=[];}
-      else if(ch!=="\r")cur+=ch;
-    }
-  }
-  if(cur.length||row.length){row.push(cur);rows.push(row);}
-  return rows.filter(r=>r.some(c=>String(c).trim()!==""));
-}
-function hhmmssToMins(t){
-  t=String(t||"").trim();
-  let m=t.match(/^(\d+):(\d+):(\d+)/);
-  if(m)return Math.round((+m[1]*3600 + +m[2]*60 + +m[3])/60);
-  m=t.match(/^(\d+):(\d+)$/);
-  if(m)return +m[1]*60+ +m[2] > 600 ? +m[1] : Math.round((+m[1]*60 + +m[2])/60);
-  return 0;
-}
-function parseGarmin(text){
-  const rows=parseCSV(text);
-  if(rows.length<2)return {error:"That doesn't look like a CSV with any rows in it."};
-  const head=rows[0].map(h=>String(h).trim().toLowerCase().replace(/^\ufeff/,""));
-  const at=n=>head.indexOf(n);
-  const iDate=at("date"), iCal=at("calories"), iType=at("activity type"), iTitle=at("title"), iTime=at("time");
-  if(iDate<0||iCal<0)return {error:"Couldn't find Date and Calories columns — is this the Activities export?"};
-  const out=[];
-  for(let i=1;i<rows.length;i++){
-    const r=rows[i];
-    const dm=String(r[iDate]||"").match(/(\d{4})-(\d{2})-(\d{2})/);
-    if(!dm)continue;
-    const kcal=Math.round(parseFloat(String(r[iCal]||"").replace(/[^0-9.]/g,"")));
-    if(!(kcal>0))continue;
-    const name=(iTitle>=0&&String(r[iTitle]||"").trim())||(iType>=0&&String(r[iType]||"").trim())||"Garmin activity";
-    out.push({date:dm[1]+"-"+dm[2]+"-"+dm[3],name:name,mins:iTime>=0?hhmmssToMins(r[iTime]):0,kcal:kcal});
-  }
-  if(!out.length)return {error:"Found the columns, but no rows with a date and calories."};
-  return {rows:out};
-}
-function importGarmin(list){
-  let added=0,skipped=0;
-  for(const it of list){
-    const id="garmin:"+it.date+":"+it.name+":"+it.kcal+":"+it.mins;
-    const day=S.ex[S.active][it.date]||(S.ex[S.active][it.date]=[]);
-    if(day.some(x=>x.id===id)){skipped++;continue;}
-    day.push({id:id,name:it.name,met:null,mins:it.mins,kcal:it.kcal,ts:Date.now(),src:"garmin"});
-    added++;
-  }
-  persist();
-  return {added:added,skipped:skipped};
-}
 function exKcal(met,kg,mins){return met*kg*(mins/60);}
 function exListHTML(q){
   const p=prof(), w=latestWeight(p.id)||p.weight;
@@ -2395,7 +2320,7 @@ function openEditEx(id){
   openSheet('<h3>'+esc(e.name)+'</h3>'+
    '<div class="qtyrow"><span class="tiny muted">Minutes</span><div class="stepper"><button id="xMinus">−</button><span class="val num" id="xVal">'+e.mins+'</span><button id="xPlus">+</button></div></div>'+
    '<div class="frow"><div><div class="flabel">Calories burned</div><input id="xK" type="number" inputmode="numeric" value="'+r0(e.kcal)+'"></div></div>'+
-   '<p class="tiny muted" style="margin:-4px 0 12px">'+(e.src==="garmin"?"Imported from Garmin — edit either figure if you want.":e.met?"Changing the minutes re-estimates the calories; type over it to set your own.":"Entered by hand.")+'</p>'+
+   '<p class="tiny muted" style="margin:-4px 0 12px">'+(e.met?"Changing the minutes re-estimates the calories; type over it to set your own.":"Entered by hand.")+'</p>'+
    '<div class="row"><button class="btn danger" id="xDel">Delete</button><button class="btn primary grow" id="xSave">Save</button></div>');
   let mins=e.mins;
   const upd=()=>{$("#xVal").textContent=mins;if(e.met)$("#xK").value=r0(exKcal(e.met,w,mins));};
@@ -2824,24 +2749,6 @@ function settingsHTML(){
    (Store.saving()?"":'<p class="tiny muted" style="margin:10px 0 0">Keep a backup file and restore it when you come back, or open the app file directly where saving works normally.</p>')+
    '<div id="photoUse" class="tiny muted" style="margin:10px 0 0">Checking photos…</div>'+
    '</section>';
-  if(S.garminSeen||S.garminState){
-    const st=S.garminState||{};
-    let body;
-    if(st.reason==="nocrypto"){
-      body='<p class="tiny" style="color:var(--over);margin:0">This viewer can\u2019t decrypt \u2014 open the app over https and it will work.</p>';
-    }else if(st.reason==="needpass"||st.reason==="badpass"){
-      body='<p class="tiny" style="color:var(--over);margin:0 0 8px">'+
-        (st.reason==="badpass"?"That passphrase didn\u2019t work.":"This feed is encrypted \u2014 enter the passphrase once on this phone.")+'</p>'+
-        '<div class="row"><input id="gPass" type="password" placeholder="Sync passphrase" style="max-width:220px">'+
-        '<button class="btn small primary" data-act="garminpass">Unlock</button></div>';
-    }else{
-      body='<div class="row" style="justify-content:space-between"><span class="tiny">Last updated <b>'+
-        (garminAgo(S.garminAt)||"never")+'</b></span>'+
-        '<button class="btn small" data-act="garminsync">Sync now</button></div>';
-    }
-    html+='<section class="card"><div class="label" style="margin-bottom:8px">Garmin</div>'+body+
-      '<p class="tiny muted" style="margin:10px 0 0">Workouts arrive on their own every half hour; opening the app also checks.</p></section>';
-  }
   html+='<section class="card"><div class="label" style="margin-bottom:8px">Backup</div>'+
    '<p class="tiny muted" style="margin:0 0 10px">A copy of everything on this phone \u2014 useful before changing phone, or to restore if something goes wrong.</p>'+
    '<div class="row"><button class="btn grow" data-act="export">Save a backup</button><button class="btn grow" data-act="import">Restore</button></div>'+
@@ -2949,7 +2856,7 @@ function pickPhoto(pid,done){
 /* An export can be sent to a partner or saved to a file — strip every secret. */
 function exportableState(){
   const copy=JSON.parse(JSON.stringify(S));
-  delete copy.aiKey; delete copy.garminPass; delete copy.garminState;
+  delete copy.aiKey;
   if(copy.sync)delete copy.sync.up;   /* which photos this phone already uploaded */
   return copy;
 }
@@ -3298,17 +3205,6 @@ function bindMain(){
       else if(a==="rmphoto"){S.profiles[pid].photo=null;persist();render();}
       else if(a==="backupnow"){downloadBackup().then(ok=>{if(!ok){S.tab="settings";render();doExport();}});}
       else if(a==="hidetip"){S.hideTip=true;persist();render();}
-      else if(a==="garminsync"){
-        el.textContent="Syncing\u2026";
-        garminSync().then(res=>{S.garminState=res;persist();render();
-          if(res.ok)alert(res.added?"Added "+res.added+" workouts.":"Already up to date.");});
-      }
-      else if(a==="garminpass"){
-        const v=$("#gPass").value.trim();
-        if(!v)return;
-        S.garminPass=v;
-        garminSync().then(res=>{S.garminState=res;if(!res.ok&&res.reason==="badpass")S.garminPass=null;persist();render();});
-      }
       else if(a==="export"){doExport();}
       else if(a==="import"){doImport();}
       else if(a==="reset"){if(confirm("Erase ALL data for both of you on this phone?")){S=blank();persist();render();}}
@@ -3444,47 +3340,6 @@ function bindExSheet(){
       persist();closeSheet();render();
     };
   }
-  if($("#gGo")){
-    const readIn=txt=>{
-      const res=parseGarmin(txt);
-      garminErr=res.error||""; garminRows=res.rows||null;
-      refreshExSheet();
-    };
-    $("#gFile").onchange=e=>{
-      const f=e.target.files[0]; if(!f)return;
-      const rd=new FileReader();
-      rd.onload=()=>readIn(String(rd.result));
-      rd.onerror=()=>{garminErr="Couldn't read that file.";refreshExSheet();};
-      rd.readAsText(f);
-    };
-    $("#gGo").onclick=()=>{
-      const t=$("#gTxt").value.trim();
-      if(!t){garminErr="Choose the CSV file above, or paste its contents first.";refreshExSheet();return;}
-      readIn(t);
-    };
-    if($("#gAdd")){
-      $("#gAdd").onclick=()=>{
-        const res=importGarmin(garminRows);
-        closeSheet();render();
-        alert("Added "+res.added+" activities"+(res.skipped?", skipped "+res.skipped+" already there":"")+".");
-      };
-    }
-  }
-  const q=$("#exQ");
-  if(q){q.oninput=()=>{$("#exList").innerHTML=exListHTML(q.value.trim());bindExRows();};bindExRows();
-    if(!("ontouchstart" in window))q.focus();}
-  if($("#xAdd")){
-    const p=prof(), w=latestWeight(p.id)||p.weight;
-    const upd=()=>{$("#xVal").textContent=exMins;$("#xKcal").textContent="+"+r0(exKcal(pickedEx.met,w,exMins))+" kcal";};
-    $("#xMinus").onclick=()=>{exMins=Math.max(5,exMins-5);upd();};
-    $("#xPlus").onclick=()=>{exMins+=5;upd();};
-    $("#xBack").onclick=()=>{pickedEx=null;refreshExSheet();};
-    $("#xAdd").onclick=()=>{
-      const day=S.ex[S.active][S.date]||(S.ex[S.active][S.date]=[]);
-      day.push({id:uid(),name:pickedEx.name,met:pickedEx.met,mins:exMins,kcal:exKcal(pickedEx.met,w,exMins),ts:Date.now()});
-      persist();closeSheet();render();
-    };
-  }
 }
 function refreshExSheet(){
   const s=$("#scrim"); if(!s)return;
@@ -3524,6 +3379,11 @@ function homeScreenTipHTML(){
    never overwrite each other and there is nothing to resolve. */
 /* Reads are cheap (100k/day) so we can look often; writes are the scarce one
    (1k/day) and only happen when something actually changed. */
+function b64bytes(str){
+  const bin=atob(str), u=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
+  return u;
+}
 const SYNC_PULL_MS=15000, SYNC_PUSH_DEBOUNCE=6000;
 let syncTimer=null, syncPushTimer=null, syncBusy=false, lastPushed="";
 
@@ -3724,65 +3584,6 @@ function consumeJoinLink(){
   return true;
 }
 
-/* ================= Garmin auto-sync =================
-   A scheduled job writes garmin.json beside this page; we read it on open.
-   Absent file = feature simply off. Encrypted file = we need the passphrase. */
-const GARMIN_URL="garmin.json";
-function b64bytes(str){
-  const bin=atob(str), u=new Uint8Array(bin.length);
-  for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
-  return u;
-}
-async function garminDecrypt(blob,pass){
-  const km=await crypto.subtle.importKey("raw",new TextEncoder().encode(pass),"PBKDF2",false,["deriveKey"]);
-  const key=await crypto.subtle.deriveKey(
-    {name:"PBKDF2",salt:b64bytes(blob.salt),iterations:200000,hash:"SHA-256"},
-    km,{name:"AES-GCM",length:256},false,["decrypt"]);
-  const pt=await crypto.subtle.decrypt({name:"AES-GCM",iv:b64bytes(blob.iv)},key,b64bytes(blob.data));
-  return JSON.parse(new TextDecoder().decode(pt));
-}
-async function garminSync(){
-  let blob;
-  try{
-    const res=await fetch(GARMIN_URL+"?t="+Date.now(),{cache:"no-store"});
-    if(!res.ok)return {ok:false,reason:"nofile"};
-    blob=await res.json();
-  }catch(e){return {ok:false,reason:"nofile"};}
-  let payload=blob;
-  if(blob&&blob.enc){
-    if(!(window.crypto&&crypto.subtle))
-      return {ok:false,reason:"nocrypto",syncedAt:blob.syncedAt};
-    if(!S.garminPass)return {ok:false,reason:"needpass",syncedAt:blob.syncedAt};
-    try{payload=await garminDecrypt(blob,S.garminPass);}
-    catch(e){return {ok:false,reason:"badpass",syncedAt:blob.syncedAt};}
-  }
-  if(!payload||!payload.profiles)return {ok:false,reason:"badfile"};
-  let added=0;
-  for(const pid of ["a","b"]){
-    for(const it of payload.profiles[pid]||[]){
-      if(!it||!it.date||!(it.kcal>0))continue;
-      const id="garmin:"+it.date+":"+it.name+":"+it.kcal+":"+(it.mins||0);
-      const day=S.ex[pid][it.date]||(S.ex[pid][it.date]=[]);
-      if(day.some(x=>x.id===id))continue;
-      day.push({id:id,name:it.name,met:null,mins:it.mins||0,kcal:it.kcal,ts:Date.now(),src:"garmin"});
-      added++;
-    }
-  }
-  S.garminAt=payload.syncedAt||null; S.garminSeen=true;
-  if(added)persist(); else Store.save(S);
-  return {ok:true,added:added,syncedAt:S.garminAt};
-}
-function garminAgo(iso){
-  if(!iso)return "";
-  const mins=Math.round((Date.now()-new Date(iso).getTime())/60000);
-  if(!isFinite(mins))return "";
-  if(mins<2)return "just now";
-  if(mins<60)return mins+" min ago";
-  const h=Math.round(mins/60);
-  if(h<24)return h+(h===1?" hour ago":" hours ago");
-  const d=Math.round(h/24);
-  return d+(d===1?" day ago":" days ago");
-}
 /* ================= boot ================= */
 (async function boot(){
   await Store.init();
@@ -3795,11 +3596,5 @@ function garminAgo(iso){
   if(joined)syncNow(false);
   prunePhotos().then(n=>{ if(n)paintPhotos(); }).catch(()=>{});
   syncStart();
-  garminSync().then(res=>{
-    if(res.reason==="nofile")return;          // sync not set up; stay silent
-    S.garminState=res;
-    if(res.ok&&res.added)persist();
-    render();
-  }).catch(()=>{});
 })();
 </script>

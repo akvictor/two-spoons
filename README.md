@@ -16,10 +16,9 @@ Inspired by the parts of LoseIt! and Cal AI that actually get used day to day.
   height, weight, activity level and goal (Mifflin-St Jeor), recalculated as weight changes.
 - **Daily log** with a calorie ring, remaining count, protein/carb/fat bars, meals split
   into breakfast / lunch / dinner / snacks, streaks, copy-yesterday, and day-by-day history.
-- **Exercise earns calories back**, three ways: pick an activity and minutes and the burn
-  is estimated from your weight and the activity's intensity (METs); enter the numbers by
-  hand; or import a Garmin Connect activity CSV. Either figure stays editable afterwards,
-  and the day's budget updates immediately.
+- **Exercise earns calories back**, two ways: pick an activity and minutes and the burn is
+  estimated from your weight and the activity's intensity (METs), or enter the numbers by
+  hand. Either figure stays editable afterwards, and the day's budget updates immediately.
 - **Water tracking** against a per-person daily glass target.
 - **Four ways to log food** — search, plain language (`kaya toast + 2 soft boiled eggs and
   kopi c` parses quantities and matches each item), quick-add when you just know the
@@ -86,23 +85,6 @@ Inspired by the parts of LoseIt! and Cal AI that actually get used day to day.
   both people's grids together, so "how are we doing?" is one look rather than arithmetic.
   Days before the journey began are marked separately so they don't count as misses.
 - **Shared view** — both people's numbers, streaks, weekly chart and weight trends together.
-
-## Garmin
-
-Garmin Connect on a computer exports your activities as CSV (**Activities → All Activities
-→ Export CSV**); the app reads that file and pulls out date, activity, duration and
-calories. Re-importing the same file is safe — entries are keyed by their contents, so
-nothing is duplicated.
-
-For hands-off syncing, a scheduled GitHub Action logs in to Garmin every 30 minutes
-and commits your recent activities as `garmin.json`; the app reads it on open and
-merges anything new. Because this repository is public the file is encrypted with a
-passphrase you choose, so only your two phones can read it. Setup is in
-[SETUP-GARMIN.md](SETUP-GARMIN.md).
-
-This uses a community library against Garmin's own web endpoints rather than their
-official Health API, which needs an approved business account and a server to receive
-webhooks. It works well in practice, and the CSV import remains as a fallback.
 
 ## Shipping a change
 
