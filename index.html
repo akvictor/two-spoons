@@ -265,6 +265,11 @@ table.data,.num,.fname,.fsub{-webkit-user-select:text;user-select:text}
 .mealphoto img{width:100%;display:block;max-height:260px;object-fit:cover}
 .mealphoto.big img{max-height:70vh;object-fit:contain}
 .mealphoto.gone,.eicwrap.gone{display:none}
+summary{cursor:pointer}
+.pickfile{display:flex;align-items:center;gap:12px;padding:14px;margin-top:10px;cursor:pointer;
+  border:var(--bw-s) dashed var(--edge);border-radius:var(--rad-s);background:var(--card)}
+.pickfile:active{background:var(--card2)}
+.pf-ic{font-size:24px;flex:none}
 .nowrap{white-space:nowrap;flex:none}
 .scanbox{position:relative;width:100%;aspect-ratio:4/3;border-radius:var(--rad-s);overflow:hidden;
   background:#000;border:var(--bw-s) solid var(--edge)}
@@ -2504,9 +2509,45 @@ function usHTML(){
     if(wb.length>=2)html+='<div class="tiny muted" style="margin-top:8px">'+esc(S.profiles.b.name)+'</div>'+lineChart(wb.map(w=>({d:w.d,v:w.kg})),"var(--p2)","kg",S.profiles.b.goalWeight);
     html+='</section>';
   }
-  html+='<button class="btn" style="width:100%" data-act="import">Sync with '+esc(them.name||"partner")+'</button>'+
-        '<p class="tiny muted" style="text-align:center;margin:10px 0 4px">Swap codes now and then to keep both phones up to date.</p>';
+  html+=partnerSyncCardHTML();
   return html;
+}
+/* Sync used to mean swapping codes by hand. It doesn't any more, so this says
+   what's actually happening and only offers the manual route if it's needed. */
+function partnerSyncCardHTML(){
+  const them=themProf(), nm=esc(them.name||"your partner");
+  const sy=S.sync||{}, live=syncReady()&&sy.on!==false;
+
+  if(!S.paired)
+    return '<section class="card"><div class="row" style="gap:10px">'+avatarHTML(them,34)+
+      '<span class="grow"><b>'+nm+' hasn\u2019t joined yet</b><br>'+
+      '<span class="tiny muted">Send a link. One tap on their phone and you both show up here.</span></span></div>'+
+      '<button class="btn primary" style="width:100%;margin-top:12px" data-act="invite">Invite '+nm+'</button>'+
+      '<button class="linkbtn" style="display:block;margin:10px auto 0" data-act="import">Got a file or code instead?</button>'+
+      '</section>';
+
+  if(live && !sy.err)
+    return '<section class="card"><div class="row" style="justify-content:space-between">'+
+      '<span><b>In sync with '+nm+'</b><br>'+
+      '<span class="tiny muted">Updated '+syncAgeLabel(sy.at)+' \u00b7 theirs '+syncAgeLabel(sy.theirAt)+'</span></span>'+
+      '<span class="pill good">On</span></div>'+
+      '<div class="row" style="margin-top:12px"><button class="btn small grow" data-act="syncnow">Sync now</button></div>'+
+      '<p class="tiny muted" style="margin:10px 0 0">Both phones update on their own. Nothing to send.</p>'+
+      '</section>';
+
+  if(live && sy.err)
+    return '<section class="card"><div class="row" style="justify-content:space-between">'+
+      '<span><b>Sync is stuck</b><br><span class="tiny muted">'+esc(sy.err)+'</span></span>'+
+      '<span class="pill over">Trouble</span></div>'+
+      '<div class="row" style="margin-top:12px"><button class="btn small grow" data-act="syncnow">Try again</button>'+
+      '<button class="btn small grow" data-act="gosync">Settings</button></div></section>';
+
+  return '<section class="card"><div class="row" style="justify-content:space-between">'+
+    '<span><b>Automatic sync is off</b><br>'+
+    '<span class="tiny muted">Right now you only see '+nm+'\u2019s day when one of you sends a file.</span></span>'+
+    '<span class="pill">Off</span></div>'+
+    '<div class="row" style="margin-top:12px"><button class="btn small primary grow" data-act="gosync">Turn it on</button>'+
+    '<button class="btn small grow" data-act="import">Open a file</button></div></section>';
 }
 /* ================= your usuals =================
    Most meals repeat. Anything eaten twice or more for this meal becomes a
@@ -2922,15 +2963,15 @@ function openInvite(){
       ? '<p class="tiny muted" style="margin-top:-6px">Send them this link. They tap it, fill in their own details, and their phone connects itself — nothing to paste.</p>'+
         '<div class="row" style="margin:10px 0 4px"><button class="btn primary grow" id="invLink">Copy invite link</button>'+
         '<button class="btn" id="invShare">Share…</button></div>'+
-        '<p class="tiny muted" style="margin:2px 2px 14px">The link carries the key to your shared data — send it to '+
-          esc(themProf().name||"your partner")+' the way you would a house key, not to a group chat.</p>'+
-        '<div class="label" style="margin:0 0 4px">Or the old way</div>'
+        '<p class="tiny muted" style="margin:2px 2px 14px">The link carries the key to your shared data \u2014 send it to '+
+          esc(themProf().name||"your partner")+' the way you would a house key, not to a group chat.</p>'
       : '<p class="tiny muted" style="margin-top:-6px">On their phone they choose <b>Join my partner</b>, then paste the code or open the file.</p>')+
-    '<textarea rows="3" readonly id="invTxt" style="margin-top:10px;font-size:16px">'+esc(json)+'</textarea>'+
-    '<div class="row" style="margin-top:10px"><button class="btn grow primary" id="invCopy">Copy code</button>'+
-    '<button class="btn grow" id="invFile">Send as file</button></div>'+
-    '<p class="tiny muted" style="margin:10px 2px 0" id="invNote">The code is small enough to paste anywhere, but carries no meal photos. '+
-    'The file carries them — AirDrop or WhatsApp it across.</p>');
+    '<details style="margin-top:6px"><summary class="tiny muted">No link? Send a file or code</summary>'+
+      '<div class="row" style="margin-top:10px"><button class="btn grow primary" id="invFile">Send as file</button>'+
+      '<button class="btn grow" id="invCopy">Copy code</button></div>'+
+      '<p class="tiny muted" style="margin:10px 2px 0" id="invNote">The file carries meal photos; a code doesn\u2019t.</p>'+
+      '<textarea rows="2" readonly id="invTxt" style="margin-top:10px;font-size:16px">'+esc(json)+'</textarea>'+
+    '</details>');
   if($("#invLink"))$("#invLink").onclick=async()=>{
     try{await navigator.clipboard.writeText(link);$("#invLink").textContent="Copied ✓";}
     catch(e){
@@ -2964,14 +3005,27 @@ function openInvite(){
   };
 }
 function doImport(){
-  openSheet('<h3>Import data</h3><p class="tiny muted" style="margin-top:-6px">Paste an export from the other phone, or choose the file. The file brings their meal photos too; a pasted code doesn\'t.</p>'+
-   '<textarea id="impTxt" rows="4" placeholder="Paste exported data here"></textarea>'+
-   '<input type="file" id="impFile" accept=".json,application/json" style="margin-top:10px">'+
-   '<div class="row" style="margin-top:12px"><button class="btn primary grow" id="impMerge">Merge into this phone</button></div>'+
-   '<p class="tiny muted">Merging combines both phones\' entries, exercise, weights and photos. Profiles and settings on this phone are kept.</p>');
-  $("#impFile").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{$("#impTxt").value=r.result;};r.readAsText(f);};
+  openSheet('<h3>Bring their data in</h3>'+
+   '<p class="tiny muted" style="margin-top:-6px">Only needed if automatic sync is off. Their file brings their photos too.</p>'+
+   '<label class="pickfile" for="impFile"><span class="pf-ic">\ud83d\udcc4</span>'+
+     '<span class="grow"><b>Choose their file</b><br><span class="tiny muted" id="impName">No file picked yet</span></span></label>'+
+   '<input type="file" id="impFile" accept=".json,application/json" hidden>'+
+   '<details style="margin-top:12px"><summary class="tiny muted">Got a code instead?</summary>'+
+     '<textarea id="impTxt" rows="3" placeholder="Paste it here" style="margin-top:8px"></textarea></details>'+
+   '<div class="row" style="margin-top:14px"><button class="btn primary grow" id="impMerge">Add to this phone</button></div>'+
+   '<p class="tiny muted" style="margin-top:10px">Nothing of yours is lost \u2014 their days are added alongside yours.</p>');
+  $("#impFile").onchange=e=>{
+    const f=e.target.files[0]; if(!f)return;
+    $("#impName").textContent=f.name;
+    const r=new FileReader();
+    r.onload=()=>{$("#impTxt").value=r.result;$("#impName").textContent=f.name+" \u2014 ready";};
+    r.onerror=()=>{$("#impName").textContent="Couldn\u2019t read that file";};
+    r.readAsText(f);
+  };
   $("#impMerge").onclick=()=>{
-    let obj;try{obj=JSON.parse($("#impTxt").value);}catch(e){alert("That doesn't look like a valid export.");return;}
+    const raw=($("#impTxt").value||"").trim();
+    if(!raw){alert("Pick their file first, or paste a code.");return;}
+    let obj;try{obj=JSON.parse(raw);}catch(e){alert("That doesn't look like a Two Spoons file.");return;}
     const st=obj.state||obj;
     if(!st.logs||!st.profiles){alert("That doesn't look like a Two Spoons export.");return;}
     mergeFrom(st);
@@ -3205,6 +3259,12 @@ function bindMain(){
       else if(a==="rmphoto"){S.profiles[pid].photo=null;persist();render();}
       else if(a==="backupnow"){downloadBackup().then(ok=>{if(!ok){S.tab="settings";render();doExport();}});}
       else if(a==="hidetip"){S.hideTip=true;persist();render();}
+      else if(a==="syncnow"){
+        el.textContent="Syncing\u2026";
+        syncNow(false).then(()=>render());
+      }
+      else if(a==="gosync"){S.tab="settings";render();
+        setTimeout(()=>{const c=$("#syUrl");if(c)c.scrollIntoView({block:"center"});},60);}
       else if(a==="export"){doExport();}
       else if(a==="import"){doImport();}
       else if(a==="reset"){if(confirm("Erase ALL data for both of you on this phone?")){S=blank();persist();render();}}
