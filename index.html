@@ -2708,23 +2708,27 @@ function syncCardHTML(){
       '<p class="tiny muted">Ask '+esc(themProf().name||"your partner")+' to set up the relay on their phone '+
       'and send you a fresh invite — importing it switches sync on here automatically.</p></section>';
   const live=syncReady()&&sy.on!==false;
+  const nm=esc(themProf().name||"your partner");
   return '<section class="card"><div class="label" style="margin-bottom:8px">Automatic sync</div>'+
    '<div class="row" style="justify-content:space-between;margin-bottom:8px"><span class="tiny">'+
-     (live?'Syncing with <b>'+esc(themProf().name||"your partner")+'</b>':'Off')+'</span>'+
+     (live?'Syncing with <b>'+nm+'</b>':'Off')+'</span>'+
      '<span class="pill '+(live&&!sy.err?"good":sy.err?"over":"")+'">'+
        (sy.err?"Trouble":live?"On":"Off")+'</span></div>'+
    (sy.err?'<p class="tiny muted" style="margin:0 0 8px">'+esc(sy.err)+'</p>':"")+
-   (live?'<p class="tiny muted" style="margin:0 0 8px">Yours went up '+syncAgeLabel(sy.at)+
-      '. Theirs was written '+syncAgeLabel(sy.theirAt)+'.</p>':"")+
-   '<div class="frow"><div><div class="flabel">Your relay address</div>'+
-     '<input id="syUrl" placeholder="https://two-spoons-sync.you.workers.dev" value="'+esc(sy.url||"")+'"></div></div>'+
-   '<p class="tiny muted" style="margin:-4px 0 10px">Set this up once — SETUP-SYNC.md in the project walks through it. '+
-     'Then send '+esc(themProf().name||"your partner")+' a fresh invite and her phone picks it up on its own.</p>'+
-   '<div class="row"><button class="btn small grow" id="sySave">Save</button>'+
-     '<button class="btn small grow" id="syNow">Sync now</button>'+
-     '<button class="btn small" id="syToggle">'+(sy.on===false?"Turn on":"Turn off")+'</button></div>'+
-   '<p class="tiny muted" style="margin:10px 0 0">Everything is encrypted on this phone before it goes up. '+
-     'The relay holds bytes it cannot read; the key only ever travels inside an invite.</p>'+
+   (live
+     ? '<p class="tiny muted" style="margin:0 0 10px"><b>It runs by itself.</b> You never have to press anything. '+
+       'It checks every few seconds while the app is open, right after you log something, and whenever you come back to it.<br>'+
+       '<span style="opacity:.8">Last check: yours '+syncAgeLabel(sy.at)+' \u00b7 theirs '+syncAgeLabel(sy.theirAt)+'.</span></p>'
+     : '')+
+   '<details'+(live?'':' open')+' style="margin-bottom:10px"><summary class="tiny muted">Relay address</summary>'+
+     '<input id="syUrl" style="margin-top:8px" placeholder="https://two-spoons-sync.you.workers.dev" value="'+esc(sy.url||"")+'">'+
+     '<p class="tiny muted" style="margin:8px 0 0">Set once, on one phone. '+nm+'\u2019s phone gets it from your invite.</p>'+
+     '<div class="row" style="margin-top:8px"><button class="btn small grow" id="sySave">Save</button>'+
+       '<button class="btn small grow" id="syNow">Check now</button>'+
+       '<button class="btn small" id="syToggle">'+(sy.on===false?"Turn on":"Turn off")+'</button></div>'+
+   '</details>'+
+   '<p class="tiny muted" style="margin:0">Everything is scrambled on this phone before it goes up, so the relay '+
+     'stores something it cannot read. Only your two phones hold the key.</p>'+
    '</section>';
 }
 function bindSyncCard(){
@@ -2762,10 +2766,15 @@ function settingsHTML(){
       (S.paired?'Connected · budget '+baseBudget(them)+' kcal':'Not joined yet')+'</span></span></div>'+
     '<div class="row">'+
       '<button class="btn small grow" data-act="invite">'+(S.paired?"Re-send invite":"Send invite")+'</button>'+
-      '<button class="btn small grow" data-act="import">Sync now</button></div>'+
+      /* the manual route only earns a button when sync isn't doing it for you */
+      (syncReady()&&S.sync.on!==false?"":'<button class="btn small grow" data-act="import">Open their file</button>')+
+    '</div>'+
     '<p class="tiny muted" style="margin:10px 0 0">'+
-      (S.paired?'They keep their own details on their phone; syncing brings their progress across.'
-               :'They install the app, choose <b>Join my partner</b>, and paste your invite.')+'</p></section>';
+      (S.paired
+        ? (syncReady()&&S.sync.on!==false
+            ? 'Their progress arrives on its own \u2014 nothing to send.'
+            : 'They keep their own details on their phone. Turn on automatic sync below and it stays up to date by itself.')
+        : 'Send them the link. One tap and their phone sets itself up.')+'</p></section>';
   if(S.savedMeals.length){
     html+='<section class="card"><div class="label" style="margin-bottom:8px">Saved meals</div>';
     for(const m of S.savedMeals){
