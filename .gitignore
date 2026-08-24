@@ -1,9 +1,6 @@
 .DS_Store
 *.json.bak
+node_modules/
 
-# never commit Garmin session tokens
-tokens/
-*.garth
-garmin_tokens*
-__pycache__/
-*.pyc
+# local wrangler dev state
+sync-worker/.wrangler/
