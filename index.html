@@ -1266,6 +1266,7 @@ function migrate(st){
   /* sync arrived after these two had already paired: the one who started the journey
      mints the credentials, and the other picks them up from a fresh invite */
   if(st.setup&&!st.sync&&st.me==="a"&&window.crypto&&crypto.getRandomValues)st.sync=newSyncCreds();
+  if(st.sync&&!st.sync.url)st.sync.url=SYNC_RELAY;   /* set up before the relay was built in */
   st.journey=st.journey||{start:null};
   if(st.setup&&!st.journey.start){
     let first=null;
@@ -1364,7 +1365,7 @@ function render(){
   app.innerHTML=html;
   bindMain();
   paintPhotos();
-  if(S.tab==="settings"){paintPhotoUsage();bindSyncCard();}
+  if(S.tab==="settings")paintPhotoUsage();
 }
 function topbarHTML(){
   if(S.tab==="settings"||S.tab==="us"){
@@ -2537,17 +2538,18 @@ function partnerSyncCardHTML(){
 
   if(live && sy.err)
     return '<section class="card"><div class="row" style="justify-content:space-between">'+
-      '<span><b>Sync is stuck</b><br><span class="tiny muted">'+esc(sy.err)+'</span></span>'+
+      '<span><b>Can\u2019t reach '+nm+' right now</b><br>'+
+      '<span class="tiny muted">'+esc(sy.err)+' It keeps trying on its own.</span></span>'+
       '<span class="pill over">Trouble</span></div>'+
-      '<div class="row" style="margin-top:12px"><button class="btn small grow" data-act="syncnow">Try again</button>'+
-      '<button class="btn small grow" data-act="gosync">Settings</button></div></section>';
+      '<div class="row" style="margin-top:12px"><button class="btn small grow" data-act="syncnow">Try again</button></div>'+
+      '</section>';
 
-  return '<section class="card"><div class="row" style="justify-content:space-between">'+
-    '<span><b>Automatic sync is off</b><br>'+
-    '<span class="tiny muted">Right now you only see '+nm+'\u2019s day when one of you sends a file.</span></span>'+
-    '<span class="pill">Off</span></div>'+
-    '<div class="row" style="margin-top:12px"><button class="btn small primary grow" data-act="gosync">Turn it on</button>'+
-    '<button class="btn small grow" data-act="import">Open a file</button></div></section>';
+  /* only reachable if the browser won't do encryption, or sync was switched off in code */
+  return '<section class="card"><b>Sync is unavailable here</b>'+
+    '<p class="tiny muted" style="margin:6px 0 0">This browser won\u2019t let the app scramble your data, so it '+
+    'won\u2019t send it. Opening the app from its normal link fixes this.</p>'+
+    '<button class="linkbtn" style="display:block;margin:10px auto 0" data-act="import">Open a file instead</button>'+
+    '</section>';
 }
 /* ================= your usuals =================
    Most meals repeat. Anything eaten twice or more for this meal becomes a
@@ -2701,53 +2703,6 @@ function milestones(){
   ];
 }
 /* ================= Settings ================= */
-function syncCardHTML(){
-  const sy=S.sync||{};
-  if(!sy.room)
-    return '<section class="card"><div class="label" style="margin-bottom:8px">Automatic sync</div>'+
-      '<p class="tiny muted">Ask '+esc(themProf().name||"your partner")+' to set up the relay on their phone '+
-      'and send you a fresh invite — importing it switches sync on here automatically.</p></section>';
-  const live=syncReady()&&sy.on!==false;
-  const nm=esc(themProf().name||"your partner");
-  return '<section class="card"><div class="label" style="margin-bottom:8px">Automatic sync</div>'+
-   '<div class="row" style="justify-content:space-between;margin-bottom:8px"><span class="tiny">'+
-     (live?'Syncing with <b>'+nm+'</b>':'Off')+'</span>'+
-     '<span class="pill '+(live&&!sy.err?"good":sy.err?"over":"")+'">'+
-       (sy.err?"Trouble":live?"On":"Off")+'</span></div>'+
-   (sy.err?'<p class="tiny muted" style="margin:0 0 8px">'+esc(sy.err)+'</p>':"")+
-   (live
-     ? '<p class="tiny muted" style="margin:0 0 10px"><b>It runs by itself.</b> You never have to press anything. '+
-       'It checks every few seconds while the app is open, right after you log something, and whenever you come back to it.<br>'+
-       '<span style="opacity:.8">Last check: yours '+syncAgeLabel(sy.at)+' \u00b7 theirs '+syncAgeLabel(sy.theirAt)+'.</span></p>'
-     : '')+
-   '<details'+(live?'':' open')+' style="margin-bottom:10px"><summary class="tiny muted">Relay address</summary>'+
-     '<input id="syUrl" style="margin-top:8px" placeholder="https://two-spoons-sync.you.workers.dev" value="'+esc(sy.url||"")+'">'+
-     '<p class="tiny muted" style="margin:8px 0 0">Set once, on one phone. '+nm+'\u2019s phone gets it from your invite.</p>'+
-     '<div class="row" style="margin-top:8px"><button class="btn small grow" id="sySave">Save</button>'+
-       '<button class="btn small grow" id="syNow">Check now</button>'+
-       '<button class="btn small" id="syToggle">'+(sy.on===false?"Turn on":"Turn off")+'</button></div>'+
-   '</details>'+
-   '<p class="tiny muted" style="margin:0">Everything is scrambled on this phone before it goes up, so the relay '+
-     'stores something it cannot read. Only your two phones hold the key.</p>'+
-   '</section>';
-}
-function bindSyncCard(){
-  if($("#sySave"))$("#sySave").onclick=()=>{
-    const v=($("#syUrl").value||"").trim().replace(/\/+$/,"");
-    if(v&&!/^https:\/\/[^\s]+$/.test(v)&&!/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/.test(v)){
-      alert("That should be the https:// address Cloudflare gave you.");return;}
-    S.sync.url=v; S.sync.err=""; lastPushed="";
-    persist(); syncStart(); render();
-  };
-  if($("#syNow"))$("#syNow").onclick=async()=>{
-    $("#syNow").textContent="Syncing…";
-    await syncNow(false);
-    render();
-  };
-  if($("#syToggle"))$("#syToggle").onclick=()=>{
-    S.sync.on=(S.sync.on===false); persist(); syncStart(); render();
-  };
-}
 function settingsHTML(){
   let html="";
   const me=meProf(), them=themProf();
@@ -2766,14 +2721,10 @@ function settingsHTML(){
       (S.paired?'Connected · budget '+baseBudget(them)+' kcal':'Not joined yet')+'</span></span></div>'+
     '<div class="row">'+
       '<button class="btn small grow" data-act="invite">'+(S.paired?"Re-send invite":"Send invite")+'</button>'+
-      /* the manual route only earns a button when sync isn't doing it for you */
-      (syncReady()&&S.sync.on!==false?"":'<button class="btn small grow" data-act="import">Open their file</button>')+
     '</div>'+
     '<p class="tiny muted" style="margin:10px 0 0">'+
       (S.paired
-        ? (syncReady()&&S.sync.on!==false
-            ? 'Their progress arrives on its own \u2014 nothing to send.'
-            : 'They keep their own details on their phone. Turn on automatic sync below and it stays up to date by itself.')
+        ? 'Their progress arrives on its own.'
         : 'Send them the link. One tap and their phone sets itself up.')+'</p></section>';
   if(S.savedMeals.length){
     html+='<section class="card"><div class="label" style="margin-bottom:8px">Saved meals</div>';
@@ -2792,7 +2743,6 @@ function settingsHTML(){
     }
     html+='</section>';
   }
-  html+=syncCardHTML();
   html+='<section class="card"><div class="label" style="margin-bottom:8px">Saving</div>'+
    '<div class="row" style="justify-content:space-between"><span class="tiny">Kept in <b>'+Store.where()+'</b></span>'+
    '<span class="pill '+(Store.saving()?"good":"over")+'">'+(Store.saving()?"Saving on":"Not saving")+'</span></div>'+
@@ -3272,8 +3222,6 @@ function bindMain(){
         el.textContent="Syncing\u2026";
         syncNow(false).then(()=>render());
       }
-      else if(a==="gosync"){S.tab="settings";render();
-        setTimeout(()=>{const c=$("#syUrl");if(c)c.scrollIntoView({block:"center"});},60);}
       else if(a==="export"){doExport();}
       else if(a==="import"){doImport();}
       else if(a==="reset"){if(confirm("Erase ALL data for both of you on this phone?")){S=blank();persist();render();}}
@@ -3453,6 +3401,10 @@ function b64bytes(str){
   for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
   return u;
 }
+/* The relay this app talks to. It never changes, so it lives here rather than in a
+   settings box. Each journey still makes its own random room and key, so two people
+   using the same relay can't see each other's data. */
+const SYNC_RELAY="https://two-spoons.victorwongjm.workers.dev";
 const SYNC_PULL_MS=15000, SYNC_PUSH_DEBOUNCE=6000;
 let syncTimer=null, syncPushTimer=null, syncBusy=false, lastPushed="";
 
@@ -3462,7 +3414,7 @@ function syncReady(){
 function newSyncCreds(){
   const r=new Uint8Array(16), k=new Uint8Array(32);
   crypto.getRandomValues(r); crypto.getRandomValues(k);
-  return {url:"",room:hexOf(r),key:bytesB64(k),on:true};
+  return {url:SYNC_RELAY,room:hexOf(r),key:bytesB64(k),on:true};
 }
 function hexOf(u8){ return [...u8].map(b=>b.toString(16).padStart(2,"0")).join(""); }
 function bytesB64(u8){ let s="";for(const b of u8)s+=String.fromCharCode(b);return btoa(s); }
