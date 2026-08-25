@@ -1496,6 +1496,7 @@ function openAdd(meal){
   sheetMeal=meal||guessMeal(); sheetTab="search"; pickedFood=null; pickedQty=1; quickParsed=null; foodCat=null; onlineState={q:"",busy:false,err:"",results:null};
   stopScan(); scanState={on:false,err:"",code:"",busy:false,notFound:false,noData:""};
   mineMode="list"; recipeItems=[]; recipePick=""; recipeName="";
+  recipeOnline={q:"",busy:false,err:"",results:null}; recipeAdd=false;
   openSheet(addSheetHTML()); bindAddSheet();
 }
 function guessMeal(){const h=new Date().getHours();return h<10.5?"Breakfast":h<15?"Lunch":h<21?"Dinner":"Snacks";}
@@ -1549,6 +1550,7 @@ function sheetBodyHTML(){
    Everything saved here stays for good and shows up in Search too. */
 let mineMode="list";          /* list | food | recipe */
 let recipeItems=[], recipePick="", recipeName="";
+let recipeOnline={q:"",busy:false,err:"",results:null}, recipeAdd=false;
 function mineHTML(){
   if(mineMode==="food")   return mineFoodFormHTML();
   if(mineMode==="recipe") return mineRecipeFormHTML();
@@ -1609,17 +1611,89 @@ function mineRecipeFormHTML(){
   return h;
 }
 function recipeSearchHTML(q){
-  if(!q) return '<p class="tiny muted" style="margin:8px 2px">Type to find a food.</p>';
-  const res=searchFoods(q,12);
-  if(!res.length) return '<p class="tiny muted" style="margin:8px 2px">Nothing matched.</p>';
-  return res.map(f=>'<div class="foodrow"><button class="fmain" data-radd="'+esc(f.name)+'">'+
+  if(!q&&!recipeAdd) return '<p class="tiny muted" style="margin:8px 2px">Type to find a food.</p>';
+  let h="";
+  const res=q?searchFoods(q,12):[];
+  h+=res.map(f=>'<div class="foodrow"><button class="fmain" data-radd="'+esc(f.name)+'">'+
     '<span class="fic">'+(f.ic||"\ud83c\udf7d\ufe0f")+'</span><span class="grow"><span class="fname">'+esc(f.name)+'</span><br>'+
     '<span class="fsub num">'+esc(f.serving)+'</span></span><b class="num">'+f.kcal+'</b></button></div>').join("");
+
+  /* Never a dead end: if it isn't in the list, offer the two ways out. */
+  if(q&&!recipeAdd){
+    h+= res.length
+      ? '<p class="tiny muted" style="margin:10px 2px 6px">Not the right one?</p>'
+      : '<p class="tiny muted" style="margin:10px 2px 6px">Nothing called \u201c'+esc(q)+'\u201d in the list.</p>';
+    h+='<div class="row" style="margin-bottom:4px">'+
+       '<button class="btn small grow" data-ronline="'+esc(q)+'">Search online</button>'+
+       '<button class="btn small grow" data-rcustom="1">Add it myself</button></div>';
+  }
+
+  if(recipeOnline.busy)
+    h+='<p class="tiny muted" style="margin:10px 2px">Looking up \u201c'+esc(recipeOnline.q)+'\u201d online\u2026</p>';
+  else if(recipeOnline.err)
+    h+='<p class="tiny muted" style="margin:10px 2px">'+esc(recipeOnline.err)+'</p>';
+  else if(recipeOnline.results&&recipeOnline.results.length){
+    h+='<div class="label" style="margin:12px 0 4px">Found online</div>'+
+       recipeOnline.results.map((f,i)=>'<div class="foodrow"><button class="fmain" data-ronadd="'+i+'">'+
+       '<span class="fic">\ud83d\udce6</span><span class="grow"><span class="fname">'+esc(f.name)+'</span><br>'+
+       '<span class="fsub num">'+esc(f.serving)+'</span></span><b class="num">'+f.kcal+'</b></button></div>').join("");
+  }else if(recipeOnline.results)
+    h+='<p class="tiny muted" style="margin:10px 2px">Nothing online either. Add it yourself below.</p>';
+
+  if(recipeAdd)
+    h+='<div class="label" style="margin:14px 0 6px">Add it yourself</div>'+
+      '<div class="frow"><div><div class="flabel">Name</div><input id="raName" value="'+esc(q||"")+'"></div></div>'+
+      '<div class="frow"><div><div class="flabel">Serving</div><input id="raServ" placeholder="1 bowl"></div>'+
+        '<div><div class="flabel">Calories</div><input id="raK" type="number" inputmode="numeric"></div></div>'+
+      '<div class="frow"><div><div class="flabel">Protein g</div><input id="raP" type="number" inputmode="decimal"></div>'+
+        '<div><div class="flabel">Carbs g</div><input id="raC" type="number" inputmode="decimal"></div>'+
+        '<div><div class="flabel">Fat g</div><input id="raF" type="number" inputmode="decimal"></div></div>'+
+      '<div class="row"><button class="btn small" id="raCancel">Cancel</button>'+
+        '<button class="btn small primary grow" id="raSave">Add to recipe</button></div>'+
+      '<p class="tiny muted" style="margin:8px 2px 0">It joins My foods too, so you only type it once.</p>';
+  return h;
 }
+async function recipeLookOnline(q){
+  recipeOnline={q:q,busy:true,err:"",results:null};
+  refreshSheet();
+  const out=[];
+  try{
+    const url=OFF_URL+"?search_terms="+encodeURIComponent(q)+
+      "&search_simple=1&action=process&json=1&page_size=20"+
+      "&fields=product_name,brands,nutriments,serving_size";
+    const r=await offFetch(url,4);
+    const j=await r.json();
+    for(const prod of (j.products||[])){
+      let nm=offText(prod.product_name); if(!nm)continue;
+      const per=offServing(prod.nutriments||{},offText(prod.serving_size));
+      if(!per)continue;
+      const brand=offText((prod.brands||"").split(",")[0]);
+      if(brand&&nm.toLowerCase().indexOf(brand.toLowerCase())<0)nm=(brand+" "+nm).trim();
+      if(nm.length>52)nm=nm.slice(0,51).trim()+"\u2026";
+      if(out.some(x=>x.name.toLowerCase()===nm.toLowerCase()))continue;
+      out.push({name:nm,serving:per.serving,kcal:Math.round(per.kcal),p:Math.round(per.p),
+        c:Math.round(per.c),f:Math.round(per.f),ic:"\ud83d\udce6",online:true});
+      if(out.length>=8)break;
+    }
+    recipeOnline.results=out;
+  }catch(e){
+    recipeOnline.err="Couldn\u2019t reach the food database. Add it yourself instead.";
+    recipeAdd=true;
+  }
+  recipeOnline.busy=false;
+  refreshSheet();
+}
+function recipePush(f){
+  const same=recipeItems.find(x=>x.name===f.name);
+  if(same)same.qty=+(same.qty+1).toFixed(2);
+  else recipeItems.push({name:f.name,serving:f.serving,kcal:f.kcal,p:f.p||0,c:f.c||0,f:f.f||0,ic:f.ic,qty:1});
+}
+function keepRecipeName(){const n=$("#rName"); if(n)recipeName=n.value;}
 function bindMine(){
   if(sheetTab==="custom"&&mineMode==="list")bindFoodRows();
   if($("#mNewFood"))$("#mNewFood").onclick=()=>{mineMode="food";refreshSheet();};
-  if($("#mNewRecipe"))$("#mNewRecipe").onclick=()=>{mineMode="recipe";recipeItems=[];recipePick="";recipeName="";refreshSheet();};
+  if($("#mNewRecipe"))$("#mNewRecipe").onclick=()=>{mineMode="recipe";recipeItems=[];recipePick="";recipeName="";
+      recipeOnline={q:"",busy:false,err:"",results:null};recipeAdd=false;refreshSheet();};
   if($("#mBack"))$("#mBack").onclick=()=>{mineMode="list";refreshSheet();};
   document.querySelectorAll("[data-delrecipe]").forEach(b=>b.onclick=()=>{
     const m=S.savedMeals.find(x=>x.id===b.dataset.delrecipe);
@@ -1635,18 +1709,55 @@ function bindMine(){
   if(rn)rn.oninput=()=>{recipeName=rn.value;};
   const rq=$("#rQ");
   if(rq){
-    rq.oninput=()=>{recipePick=rq.value.trim();$("#rList").innerHTML=recipeSearchHTML(recipePick);bindMine();};
+    rq.oninput=()=>{
+      keepRecipeName();
+      recipePick=rq.value.trim();
+      if(recipeOnline.results||recipeOnline.err)recipeOnline={q:"",busy:false,err:"",results:null};
+      $("#rList").innerHTML=recipeSearchHTML(recipePick);bindMine();
+    };
     document.querySelectorAll("[data-radd]").forEach(b=>b.onclick=()=>{
-      const nEl=$("#rName"); if(nEl)recipeName=nEl.value;   /* keep what they typed */
+      keepRecipeName();
       const f=allFoods().find(x=>x.name===b.dataset.radd);
       if(!f)return;
-      const same=recipeItems.find(x=>x.name===f.name);
-      if(same)same.qty=+(same.qty+1).toFixed(2);
-      else recipeItems.push({name:f.name,serving:f.serving,kcal:f.kcal,p:f.p,c:f.c,f:f.f,ic:f.ic,qty:1});
+      recipePush(f);
+      recipeOnline={q:"",busy:false,err:"",results:null};
       refreshSheet();
       const q2=$("#rQ"); if(q2){q2.value=recipePick;}
     });
   }
+  document.querySelectorAll("[data-ronline]").forEach(b=>b.onclick=()=>{
+    keepRecipeName(); recipeLookOnline(b.dataset.ronline);
+  });
+  document.querySelectorAll("[data-rcustom]").forEach(b=>b.onclick=()=>{
+    keepRecipeName(); recipeAdd=true; refreshSheet();
+  });
+  document.querySelectorAll("[data-ronadd]").forEach(b=>b.onclick=()=>{
+    keepRecipeName();
+    const f=(recipeOnline.results||[])[+b.dataset.ronadd]; if(!f)return;
+    if(!S.custom.some(x=>x.name===f.name))
+      S.custom.unshift({name:f.name,serving:f.serving,kcal:f.kcal,p:f.p,c:f.c,f:f.f,
+                        kw:"",ic:f.ic,cat:"snacks",fromOnline:true});
+    persist();
+    recipePush(f);
+    recipeOnline={q:"",busy:false,err:"",results:null};
+    refreshSheet();
+    const q2=$("#rQ"); if(q2)q2.value=recipePick;
+  });
+  if($("#raCancel"))$("#raCancel").onclick=()=>{keepRecipeName();recipeAdd=false;refreshSheet();};
+  if($("#raSave"))$("#raSave").onclick=()=>{
+    keepRecipeName();
+    const nm=($("#raName").value||"").trim(), k=+$("#raK").value;
+    if(!nm||!(k>0)){alert("Give it a name and calories.");return;}
+    const f={name:nm,serving:($("#raServ").value||"").trim()||"1 serving",kcal:r0(k),
+      p:+$("#raP").value||0,c:+$("#raC").value||0,f:+$("#raF").value||0,kw:"",ic:"\ud83c\udf7d\ufe0f"};
+    if(!S.custom.some(x=>x.name===f.name))S.custom.unshift(f);
+    persist();
+    recipePush(f);
+    recipeAdd=false;
+    recipeOnline={q:"",busy:false,err:"",results:null};
+    refreshSheet();
+    const q2=$("#rQ"); if(q2)q2.value=recipePick;
+  };
   if($("#rSave"))$("#rSave").onclick=()=>{
     const nm=(($("#rName")||{}).value||recipeName||"").trim();
     if(!nm){alert("Give the recipe a name.");return;}
@@ -1655,6 +1766,7 @@ function bindMine(){
       kcal:i.kcal,p:i.p,c:i.c,f:i.f,qty:i.qty,ic:i.ic}))});
     persist();
     mineMode="list";recipeItems=[];recipePick="";recipeName="";
+    recipeOnline={q:"",busy:false,err:"",results:null};recipeAdd=false;
     refreshSheet();
   };
 }
