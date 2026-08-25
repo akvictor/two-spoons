@@ -1462,6 +1462,13 @@ function todayHTML(){
       (burn?'<span class="bit">+ Exercise <b class="num" style="color:var(--burn)">'+r0(burn)+'</b></span>':"")+
       '<span class="bit">− Eaten <b class="num">'+r0(eaten)+'</b></span></div>'+
     '<div class="macros">'+macroHTML("Protein",P,tP,"pro")+macroHTML("Carbs",C,tC,"carb")+macroHTML("Fat",F,tF,"fat")+'</div>'+
+    (function(){
+      /* a food logged with calories only leaves these bars flat; say so rather than
+         let the numbers look wrong */
+      const n=entries(p.id,S.date).filter(e=>e.kcal>0&&!e.p&&!e.c&&!e.f).length;
+      return n?'<p class="tiny muted" style="margin:8px 0 0">'+n+' item'+(n===1?"":"s")+
+        ' here '+(n===1?"has":"have")+' no protein, carbs or fat recorded.</p>':"";
+    })()+
     bankLineHTML(p.id)+'</section>';
   /* water */
   const w=dayWater(p.id,S.date), wt=p.waterTarget||8;
@@ -1509,7 +1516,7 @@ let sheetMeal="Lunch", sheetTab="search", pickedFood=null, pickedQty=1, quickPar
 function openAdd(meal){
   sheetMeal=meal||guessMeal(); sheetTab="search"; pickedFood=null; pickedQty=1; quickParsed=null; foodCat=null; onlineState={q:"",busy:false,err:"",results:null};
   stopScan(); scanState={on:false,err:"",code:"",busy:false,notFound:false,noData:""};
-  mineMode="list"; recipeItems=[]; recipePick=""; recipeName="";
+  mineMode="list"; editingFood=null; editingRecipe=null; recipeItems=[]; recipePick=""; recipeName="";
   recipeOnline={q:"",busy:false,err:"",results:null}; recipeAdd=false;
   openSheet(addSheetHTML()); bindAddSheet();
 }
@@ -1562,13 +1569,14 @@ function sheetBodyHTML(){
 }
 /* ---- Mine: the foods and recipes you added yourself ----
    Everything saved here stays for good and shows up in Search too. */
-let mineMode="list";          /* list | food | recipe */
+let mineMode="list", editingFood=null, editingRecipe=null;          /* list | food | recipe */
 let recipeItems=[], recipePick="", recipeName="";
 let recipeOnline={q:"",busy:false,err:"",results:null}, recipeAdd=false;
 function mineHTML(){
   if(mineMode==="food")   return mineFoodFormHTML();
   if(mineMode==="recipe") return mineRecipeFormHTML();
-  const mine=S.custom||[], recipes=S.savedMeals||[];
+  const all=S.custom||[], recipes=S.savedMeals||[];
+  const mine=all.filter(f=>!f.fromOnline), scanned=all.filter(f=>f.fromOnline);
   let h='<div class="row" style="margin:2px 0 4px">'+
     '<button class="btn small grow" id="mNewFood">+ New food</button>'+
     '<button class="btn small grow" id="mNewRecipe">+ New recipe</button></div>';
@@ -1579,31 +1587,58 @@ function mineHTML(){
       h+='<div class="foodrow"><button class="fmain" data-savedmeal="'+m.id+'">'+
         '<span class="fic">\ud83c\udf72</span><span class="grow"><span class="fname">'+esc(m.name)+'</span><br>'+
         '<span class="fsub">'+m.items.length+' things</span></span><b class="num">'+r0(tot)+'</b></button>'+
+        '<button class="star" data-editrecipe="'+m.id+'" aria-label="Edit recipe">\u270e</button>'+
         '<button class="star" data-delrecipe="'+m.id+'" aria-label="Delete recipe">\u2715</button></div>';
     }
   }
   if(mine.length){
     h+='<div class="label" style="margin:14px 0 4px">My foods</div>';
-    for(const f of mine) h+=foodRowHTML(f);
+    for(const f of mine) h+=myFoodRowHTML(f);
   }
-  if(!recipes.length&&!mine.length)
+  if(scanned.length){
+    h+='<div class="label" style="margin:14px 0 2px">Scanned</div>'+
+       '<p class="tiny muted" style="margin:0 0 6px">Kept so you don\u2019t have to scan them twice.</p>';
+    for(const f of scanned) h+=myFoodRowHTML(f);
+  }
+  if(!recipes.length&&!mine.length&&!scanned.length)
     h+='<p class="tiny muted" style="text-align:center;padding:18px 8px">Nothing of your own yet.<br>'+
        'Add a food you eat often, or a recipe made of several things. Both are saved for good.</p>';
   return h;
 }
+/* the usual row, plus a pencil so a typo isn't permanent */
+function myFoodRowHTML(f){
+  const fav=isFav(f.name);
+  return '<div class="foodrow">'+
+    '<button class="fmain" data-food="'+esc(f.name)+'"><span class="fic">'+(f.ic||"\ud83c\udf7d\ufe0f")+'</span>'+
+    '<span class="grow"><span class="fname">'+esc(f.name)+'</span><br>'+
+    '<span class="fsub num">'+esc(f.serving)+' \u00b7 P'+f.p+' C'+f.c+' F'+f.f+'</span></span>'+
+    '<b class="num">'+f.kcal+'</b></button>'+
+    '<button class="star" data-editfood="'+esc(f.name)+'" aria-label="Edit '+esc(f.name)+'">\u270e</button>'+
+    '<button class="star'+(fav?' on':'')+'" data-star="'+esc(f.name)+'" aria-label="'+(fav?'Remove from favourites':'Add to favourites')+'">'+(fav?'\u2605':'\u2606')+'</button>'+
+  '</div>';
+}
 function mineFoodFormHTML(){
+  const e=editingFood?(S.custom||[]).find(f=>f.name===editingFood):null;
+  const val=(k,z)=>e&&e[k]!==undefined&&e[k]!==null&&(!z||e[k])?esc(String(e[k])):"";
   return '<button class="linkbtn" id="mBack">\u2039 Back</button>'+
-    '<div class="frow"><div><div class="flabel">Name</div><input id="cName" placeholder="e.g. Mum\u2019s curry"></div></div>'+
-    '<div class="frow"><div><div class="flabel">Serving</div><input id="cServ" placeholder="1 bowl"></div>'+
-      '<div><div class="flabel">Calories</div><input id="cK" type="number" inputmode="numeric"></div></div>'+
-    '<div class="frow"><div><div class="flabel">Protein g</div><input id="cP" type="number" inputmode="decimal"></div>'+
-      '<div><div class="flabel">Carbs g</div><input id="cC" type="number" inputmode="decimal"></div>'+
-      '<div><div class="flabel">Fat g</div><input id="cF" type="number" inputmode="decimal"></div></div>'+
-    '<button class="btn primary" style="width:100%" id="cSave">Save &amp; add to '+sheetMeal+'</button>'+
-    '<p class="tiny muted" style="margin:8px 2px 0">Saved to My foods, and findable in Search from now on.</p>';
+    '<div class="frow"><div><div class="flabel">Name</div><input id="cName" placeholder="e.g. Mum\u2019s curry" value="'+val("name")+'"></div></div>'+
+    '<div class="frow"><div><div class="flabel">Serving</div><input id="cServ" placeholder="1 bowl" value="'+val("serving")+'"></div>'+
+      '<div><div class="flabel">Calories</div><input id="cK" type="number" inputmode="numeric" value="'+val("kcal")+'"></div></div>'+
+    '<div class="frow"><div><div class="flabel">Protein g</div><input id="cP" type="number" inputmode="decimal" value="'+val("p",1)+'"></div>'+
+      '<div><div class="flabel">Carbs g</div><input id="cC" type="number" inputmode="decimal" value="'+val("c",1)+'"></div>'+
+      '<div><div class="flabel">Fat g</div><input id="cF" type="number" inputmode="decimal" value="'+val("f",1)+'"></div></div>'+
+    '<p class="tiny muted" style="margin:0 0 10px">Leave protein, carbs and fat blank if you don\u2019t know them. '+
+      'Those bars just won\u2019t count this food.</p>'+
+    '<p class="tiny" id="cWarn" style="color:var(--over);margin:0 0 8px;min-height:1px"></p>'+
+    '<button class="btn primary" style="width:100%" id="cSave">'+
+      (e?'Save changes':'Save &amp; add to '+sheetMeal)+'</button>'+
+    '<p class="tiny muted" style="margin:8px 2px 0">'+
+      (e?'Changes apply from now on. Days you already logged keep their old numbers.'
+        :'Saved to My foods, and findable in Search from now on.')+'</p>';
 }
 function mineRecipeFormHTML(){
   const tot=recipeItems.reduce((a,i)=>a+i.kcal*i.qty,0);
+  const editing=!!editingRecipe;
   let h='<button class="linkbtn" id="mBack">\u2039 Back</button>'+
     '<div class="frow"><div><div class="flabel">Recipe name</div>'+
       '<input id="rName" placeholder="e.g. My usual breakfast" value="'+esc(recipeName)+'"></div></div>'+
@@ -1619,7 +1654,7 @@ function mineRecipeFormHTML(){
       '<button class="star" data-rmrecipe="'+i+'" aria-label="Remove">\u2715</button></div>';
   }
   h+='<div class="row" style="justify-content:space-between;margin:10px 0"><b class="num">Total '+r0(tot)+' kcal</b>'+
-     '<button class="btn small primary" id="rSave">Save recipe</button></div>'+
+     '<button class="btn small primary" id="rSave">'+(editing?"Save changes":"Save recipe")+'</button></div>'+
      '<input id="rQ" placeholder="Add something\u2026" autocomplete="off">'+
      '<div id="rList">'+recipeSearchHTML(recipePick)+'</div>';
   return h;
@@ -1705,10 +1740,20 @@ function recipePush(f){
 function keepRecipeName(){const n=$("#rName"); if(n)recipeName=n.value;}
 function bindMine(){
   if(sheetTab==="custom"&&mineMode==="list")bindFoodRows();
-  if($("#mNewFood"))$("#mNewFood").onclick=()=>{mineMode="food";refreshSheet();};
-  if($("#mNewRecipe"))$("#mNewRecipe").onclick=()=>{mineMode="recipe";recipeItems=[];recipePick="";recipeName="";
+  if($("#mNewFood"))$("#mNewFood").onclick=()=>{editingFood=null;mineMode="food";refreshSheet();};
+  document.querySelectorAll("[data-editfood]").forEach(b=>b.onclick=()=>{
+    editingFood=b.dataset.editfood; mineMode="food"; refreshSheet();
+  });
+  document.querySelectorAll("[data-editrecipe]").forEach(b=>b.onclick=()=>{
+    const m=S.savedMeals.find(x=>x.id===b.dataset.editrecipe); if(!m)return;
+    editingRecipe=m.id; recipeName=m.name;
+    recipeItems=m.items.map(i=>Object.assign({},i));
+    recipePick=""; recipeOnline={q:"",busy:false,err:"",results:null}; recipeAdd=false;
+    mineMode="recipe"; refreshSheet();
+  });
+  if($("#mNewRecipe"))$("#mNewRecipe").onclick=()=>{editingRecipe=null;mineMode="recipe";recipeItems=[];recipePick="";recipeName="";
       recipeOnline={q:"",busy:false,err:"",results:null};recipeAdd=false;refreshSheet();};
-  if($("#mBack"))$("#mBack").onclick=()=>{mineMode="list";refreshSheet();};
+  if($("#mBack"))$("#mBack").onclick=()=>{editingFood=null;editingRecipe=null;mineMode="list";refreshSheet();};
   document.querySelectorAll("[data-delrecipe]").forEach(b=>b.onclick=()=>{
     const m=S.savedMeals.find(x=>x.id===b.dataset.delrecipe);
     if(!m||!confirm("Delete \u201c"+m.name+"\u201d?"))return;
@@ -1776,10 +1821,15 @@ function bindMine(){
     const nm=(($("#rName")||{}).value||recipeName||"").trim();
     if(!nm){alert("Give the recipe a name.");return;}
     if(!recipeItems.length){alert("Add at least one thing to it.");return;}
-    S.savedMeals.push({id:uid(),name:nm,items:recipeItems.map(i=>({name:i.name,serving:i.serving,
-      kcal:i.kcal,p:i.p,c:i.c,f:i.f,qty:i.qty,ic:i.ic}))});
+    const items=recipeItems.map(i=>({name:i.name,serving:i.serving,
+      kcal:i.kcal,p:i.p,c:i.c,f:i.f,qty:i.qty,ic:i.ic}));
+    if(editingRecipe){
+      const cur=S.savedMeals.find(x=>x.id===editingRecipe);
+      if(cur){cur.name=nm;cur.items=items;}
+      editingRecipe=null;
+    }else S.savedMeals.push({id:uid(),name:nm,items:items});
     persist();
-    mineMode="list";recipeItems=[];recipePick="";recipeName="";
+    mineMode="list";editingFood=null;editingRecipe=null;recipeItems=[];recipePick="";recipeName="";
     recipeOnline={q:"",busy:false,err:"",results:null};recipeAdd=false;
     refreshSheet();
   };
@@ -3616,7 +3666,7 @@ function bindSheetBody(){
       if(!(k>0)){alert("Enter how many calories.");return;}
       const label=$("#fN").value.trim();
       const f={name:label||("Quick add "+r0(k)+" kcal"),serving:"1 serving",kcal:r0(k),p:0,c:0,f:0,kw:"quick",ic:"⚡"};
-      if(!S.custom.some(x=>x.name===f.name))S.custom.unshift(f);
+      /* deliberately not kept in My foods: this tab logs a number, it doesn't make a food */
       addEntry(f,1,sheetMeal);
       closeSheet();render();
     };
@@ -3624,8 +3674,18 @@ function bindSheetBody(){
   if($("#cSave")){
     $("#cSave").onclick=()=>{
       const name=$("#cName").value.trim(),k=+$("#cK").value;
-      if(!name||!(k>0)){alert("Give it a name and calories.");return;}
-      const f={name:name,serving:$("#cServ").value.trim()||"1 serving",kcal:r0(k),p:+$("#cP").value||0,c:+$("#cC").value||0,f:+$("#cF").value||0,kw:"",ic:"🍽️"};
+      if(!name||!(k>0)){
+        const w=$("#cWarn"); if(w)w.textContent="Give it a name and how many calories.";
+        return;
+      }
+      const vals={serving:$("#cServ").value.trim()||"1 serving",kcal:r0(k),
+        p:+$("#cP").value||0,c:+$("#cC").value||0,f:+$("#cF").value||0};
+      if(editingFood){
+        const cur=(S.custom||[]).find(x=>x.name===editingFood);
+        if(cur)Object.assign(cur,vals,{name:name});
+        editingFood=null; mineMode="list"; persist(); refreshSheet(); return;
+      }
+      const f=Object.assign({name:name,kw:"",ic:"\ud83c\udf7d\ufe0f"},vals);
       if(!S.custom.some(x=>x.name===f.name))S.custom.unshift(f);
       persist();
       addEntry(f,1,sheetMeal);closeSheet();render();
