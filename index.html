@@ -1218,10 +1218,15 @@ window.addEventListener("beforeunload",e=>{
   e.preventDefault();e.returnValue="";
 });
 
+let setupWarn="";
 function newProfile(id,sex,h,w){
-  return {id:id,name:"",photo:null,sex:sex,age:32,height:h,weight:w,
+  /* age/height/weight start empty on purpose. Filling them with plausible numbers
+     made the app quote a calorie budget "worked out from your details" when it had
+     no details at all. The placeholders in the form show the shape, not your data. */
+  return {id:id,name:"",photo:null,sex:sex,age:null,height:null,weight:null,
           activity:"light",pace:"lose025",override:null,goalWeight:null,waterTarget:8};
 }
+function profComplete(p){return !!(p&&p.age>0&&p.height>0&&p.weight>0);}
 const STYLES=[
   {id:"sticker",name:"Sticker",blurb:"Chunky and playful",sw:["#FFF6E9","#3565C0","#C06722"]},
   {id:"clean",  name:"Clean",  blurb:"Quiet and flat",   sw:["#F6F7F9","#3565C0","#C06722"]},
@@ -1304,8 +1309,8 @@ function niceDate(ds){const p=ds.split("-");const d=new Date(+p[0],+p[1]-1,+p[2]
 function r0(n){return Math.round(n);}
 function baseBudget(p){
   if(p.override) return p.override;
-  const w=latestWeight(p.id)||p.weight;
-  const bmr=10*w+6.25*p.height-5*p.age+(p.sex==="male"?5:-161);
+  const w=latestWeight(p.id)||p.weight||70;
+  const bmr=10*w+6.25*(p.height||170)-5*(p.age||32)+(p.sex==="male"?5:-161);
   return Math.max(1200,r0(bmr*ACT[p.activity]+PACE[p.pace]));
 }
 function latestWeight(pid){const ws=S.weights[pid];return ws&&ws.length?ws[ws.length-1].kg:null;}
@@ -3064,9 +3069,9 @@ function editProfSheet(pid){
 function profFormHTML(pre,p){
   return '<div class="frow"><div><div class="flabel">Name</div><input id="'+pre+'name" value="'+esc(p.name)+'" placeholder="Name"></div>'+
    '<div><div class="flabel">Sex</div><select id="'+pre+'sex"><option value="male" '+(p.sex==="male"?"selected":"")+'>Male</option><option value="female" '+(p.sex==="female"?"selected":"")+'>Female</option></select></div></div>'+
-   '<div class="frow"><div><div class="flabel">Age</div><input id="'+pre+'age" type="number" value="'+p.age+'"></div>'+
-   '<div><div class="flabel">Height cm</div><input id="'+pre+'h" type="number" value="'+p.height+'"></div>'+
-   '<div><div class="flabel">Weight kg</div><input id="'+pre+'w" type="number" step="0.1" value="'+p.weight+'"></div></div>'+
+   '<div class="frow"><div><div class="flabel">Age</div><input id="'+pre+'age" type="number" inputmode="numeric" placeholder="e.g. 32" value="'+(p.age||"")+'"></div>'+
+   '<div><div class="flabel">Height cm</div><input id="'+pre+'h" type="number" inputmode="numeric" placeholder="e.g. 172" value="'+(p.height||"")+'"></div>'+
+   '<div><div class="flabel">Weight kg</div><input id="'+pre+'w" type="number" step="0.1" inputmode="decimal" placeholder="e.g. 70" value="'+(p.weight||"")+'"></div></div>'+
    '<div class="frow"><div><div class="flabel">Activity</div><select id="'+pre+'act">'+
      '<option value="sedentary" '+(p.activity==="sedentary"?"selected":"")+'>Sedentary (desk job)</option>'+
      '<option value="light" '+(p.activity==="light"?"selected":"")+'>Light (walks, 1–2 workouts/wk)</option>'+
@@ -3081,8 +3086,10 @@ function profFormHTML(pre,p){
 function readProfForm(pre,p){
   const nm=$("#"+pre+"name").value.trim();
   if(nm)p.name=nm;
-  p.sex=$("#"+pre+"sex").value; p.age=+$("#"+pre+"age").value||p.age;
-  p.height=+$("#"+pre+"h").value||p.height; p.weight=+$("#"+pre+"w").value||p.weight;
+  p.sex=$("#"+pre+"sex").value;
+  p.age=+$("#"+pre+"age").value||null;
+  p.height=+$("#"+pre+"h").value||null;
+  p.weight=+$("#"+pre+"w").value||null;
   p.activity=$("#"+pre+"act").value; p.pace=$("#"+pre+"pace").value;
 }
 /* photo: downscale to a small square so it fits comfortably in local storage */
@@ -3302,7 +3309,8 @@ function setupYouHTML(){
       '<div class="grow"><button class="btn small" id="uPhoto">'+(p.photo?"Change photo":"Add a photo")+'</button>'+
       (p.photo?' <button class="btn small danger" id="uRmPhoto">Remove</button>':"")+
       '<div class="tiny muted" style="margin-top:6px">Optional</div></div></div>'+
-    profFormHTML("me_",p)+'</section>'+
+    profFormHTML("me_",p)+
+    '<p class="tiny" id="meWarn" style="color:var(--over);margin:10px 2px 0;min-height:1px">'+esc(setupWarn)+'</p></section>'+
     '<button class="btn primary" style="width:100%;margin-bottom:30px" data-s="youNext">Continue</button>',
     S.paired?null:"welcome");
 }
@@ -3386,7 +3394,7 @@ function bindSetup(){
         if($("#pName")&&$("#pName").value.trim())themProf().name=$("#pName").value.trim();
         S.setupStep=a;persist();render();
       }
-      else if(a==="start"){S.me="a";S.active="a";if(!S.sync)S.sync=newSyncCreds();S.setupStep="you";render();}
+      else if(a==="start"){S.me="a";S.active="a";if(!S.sync)S.sync=newSyncCreds();setupWarn="";S.setupStep="you";render();}
       else if(a==="join"){S.setupStep="join";render();}
       else if(a==="joinSkip"){S.me="b";S.active="b";S.setupStep="you";render();}
       else if(a==="joinNext"){
@@ -3398,7 +3406,19 @@ function bindSetup(){
       }
       else if(a==="youNext"){
         readProfForm("me_",meProf());
-        if(!meProf().name)meProf().name="Me";
+        const me=meProf();
+        const miss=[];
+        if(!me.name)miss.push("your name");
+        if(!(me.age>0))miss.push("age");
+        if(!(me.height>0))miss.push("height");
+        if(!(me.weight>0))miss.push("weight");
+        if(miss.length){
+          setupWarn="Still need "+miss.join(", ")+". Your daily calories are worked out from these.";
+          persist();render();
+          setTimeout(()=>{const w2=$("#meWarn");if(w2)w2.scrollIntoView({block:"center"});},50);
+          return;
+        }
+        setupWarn="";
         if(S.paired){S.journey.start=S.journey.start||todayStr();S.setupStep="done";}
         else S.setupStep="partner";
         persist();render();
