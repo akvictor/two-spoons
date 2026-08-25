@@ -1208,7 +1208,15 @@ function offerUndo(label,pid,date,before){
     undoState=null;hideToast();persist();render();
   };
   clearTimeout(undoTimer);
-  undoTimer=setTimeout(hideToast,5000);
+  undoTimer=setTimeout(hideToast,12000);
+}
+function toastMsg(text){
+  const t=$("#toast"); if(!t)return;
+  undoState=null;
+  t.innerHTML='<span class="grow">'+esc(text)+'</span>';
+  t.classList.add("show");
+  clearTimeout(undoTimer);
+  undoTimer=setTimeout(hideToast,2600);
 }
 function hideToast(){const t=$("#toast");if(t)t.classList.remove("show");undoState=null;}
 /* memory-only: nothing on disk, so don't let a stray tab close eat the day */
@@ -1270,7 +1278,7 @@ function migrate(st){
   if(!st.me)st.me="a";
   /* sync arrived after these two had already paired: the one who started the journey
      mints the credentials, and the other picks them up from a fresh invite */
-  if(st.setup&&!st.sync&&st.me==="a"&&window.crypto&&crypto.getRandomValues)st.sync=newSyncCreds();
+  if(st.setup&&!st.sync&&window.crypto&&crypto.getRandomValues)st.sync=newSyncCreds();
   if(st.sync&&!st.sync.url)st.sync.url=SYNC_RELAY;   /* set up before the relay was built in */
   st.journey=st.journey||{start:null};
   if(st.setup&&!st.journey.start){
@@ -1373,9 +1381,10 @@ function render(){
   if(S.tab==="settings")paintPhotoUsage();
 }
 function topbarHTML(){
-  if(S.tab==="settings"||S.tab==="us"){
+  /* only Today is a day you can page through; the rest are just screens */
+  if(S.tab!=="today"){
     return '<div class="topbar"><div class="datebar"><div style="width:40px"></div><div class="grow"><div class="dlabel">'+
-      (S.tab==="us"?"Journey":"Settings")+'</div></div><div style="width:40px"></div></div></div>';
+      (S.tab==="us"?"Journey":S.tab==="trends"?"Trends":"Settings")+'</div></div><div style="width:40px"></div></div></div>';
   }
   const me=prof();   /* whoever's day is on screen, not necessarily you */
   return '<div class="topbar">'+
@@ -2397,10 +2406,18 @@ function searchFoods(q,limit){
     return [sc,f];
   }).filter(x=>x[0]>0).sort((a,b)=>b[0]-a[0]).slice(0,limit).map(x=>x[1]);
 }
+/* Barcode products are usually recorded as "100 g", so a Mars bar reads 450 kcal.
+   Let people type the grams they actually ate instead of tapping 0.25 at a time. */
+function servingGrams(serving){
+  const m=String(serving||"").match(/^\s*(\d+(?:\.\d+)?)\s*(g|ml)\b/i);
+  return m?{n:parseFloat(m[1]),unit:m[2].toLowerCase()}:null;
+}
 function pickHTML(){
-  const f=pickedFood;
-  return '<div class="card" style="margin:4px 0 0"><b>'+esc(f.name)+'</b><div class="tiny muted num">'+esc(f.serving)+' · '+f.kcal+' kcal · P'+f.p+' C'+f.c+' F'+f.f+'</div>'+
-    '<div class="qtyrow"><span class="tiny muted">Portion</span><div class="stepper"><button id="qMinus">−</button><span class="val num" id="qVal">'+pickedQty+'×</span><button id="qPlus">+</button></div><span class="grow"></span><b class="num" id="qKcal">'+r0(f.kcal*pickedQty)+' kcal</b></div>'+
+  const f=pickedFood, g=servingGrams(f.serving);
+  return '<div class="card" style="margin:4px 0 0"><b>'+esc(f.name)+'</b><div class="tiny muted num">'+esc(f.serving)+' \u00b7 '+f.kcal+' kcal \u00b7 P'+f.p+' C'+f.c+' F'+f.f+'</div>'+
+    (g?'<div class="frow" style="margin-top:10px"><div><div class="flabel">How much did you have? ('+g.unit+')</div>'+
+        '<input id="qGram" type="number" inputmode="decimal" value="'+r0(g.n*pickedQty)+'"></div></div>':"")+
+    '<div class="qtyrow"><span class="tiny muted">Portion</span><div class="stepper"><button id="qMinus">\u2212</button><span class="val num" id="qVal">'+pickedQty+'\u00d7</span><button id="qPlus">+</button></div><span class="grow"></span><b class="num" id="qKcal">'+r0(f.kcal*pickedQty)+' kcal</b></div>'+
     '<div class="row"><button class="btn" id="pickBack">Back</button><button class="btn primary grow" id="pickAdd">Add to '+sheetMeal+'</button></div></div>';
 }
 /* quick log parser */
@@ -2568,7 +2585,8 @@ function exBodyHTML(){
       '<div class="frow"><div><div class="flabel">Activity</div><input id="mName" placeholder="e.g. Morning run"></div></div>'+
       '<div class="frow"><div><div class="flabel">Minutes</div><input id="mMins" type="number" inputmode="numeric" placeholder="45"></div>'+
       '<div><div class="flabel">Calories burned</div><input id="mK" type="number" inputmode="numeric" placeholder="420"></div></div>'+
-      '<button class="btn primary" style="width:100%" id="mSave">Add exercise</button>';
+      '<p class="tiny" id="mWarn" style="color:var(--over);margin:6px 2px 0;min-height:1px"></p>'+
+      '<button class="btn primary" style="width:100%;margin-top:8px" id="mSave">Add exercise</button>';
   }
   return '<input id="exQ" placeholder="Search activity… (e.g. run, badminton)" autocomplete="off">'+
     '<div id="exList">'+exListHTML("")+'</div>';
@@ -2753,7 +2771,7 @@ function usHTML(){
     const c=consistency(p.id,S.period||7);
     html+='<div class="row" style="margin:2px 0 6px">'+avatarHTML(p,24)+
       '<span class="grow tiny"><b>'+esc(p.name)+'</b>'+(p.id===S.me?' <span class="muted">(you)</span>':"")+'</span>'+
-      '<span class="tiny muted num">'+c.loggedPct+'% · '+c.onPct+'% on target</span></div>'+
+      '<span class="tiny muted num">'+c.logged+'/'+c.total+' days \u00b7 '+c.on+' on target</span></div>'+
       dotGridHTML(p.id,S.period||7)+'<div style="height:12px"></div>';
   }
   html+=dotLegendHTML()+'</section>';
@@ -2916,8 +2934,8 @@ function consistencyCardHTML(pid,n){
   const c=consistency(pid,n);
   if(!c.total)return "";
   return '<div class="stats" style="margin-bottom:10px">'+
-      '<div class="stat"><div class="v num">'+c.loggedPct+'%</div><div class="k">days logged</div></div>'+
-      '<div class="stat"><div class="v num">'+c.onPct+'%</div><div class="k">hit target</div></div>'+
+      '<div class="stat"><div class="v num">'+c.logged+'/'+c.total+'</div><div class="k">days logged</div></div>'+
+      '<div class="stat"><div class="v num">'+c.on+'/'+(c.logged||0)+'</div><div class="k">hit target</div></div>'+
       '<div class="stat"><div class="v num">'+c.best+'</div><div class="k">best run</div></div>'+
     '</div>'+dotGridHTML(pid,n)+dotLegendHTML()+
     '<details class="dtable"><summary>View as table</summary><table class="data">'+
@@ -3396,7 +3414,9 @@ function bindSetup(){
       }
       else if(a==="start"){S.me="a";S.active="a";if(!S.sync)S.sync=newSyncCreds();setupWarn="";S.setupStep="you";render();}
       else if(a==="join"){S.setupStep="join";render();}
-      else if(a==="joinSkip"){S.me="b";S.active="b";S.setupStep="you";render();}
+      else if(a==="joinSkip"){S.me="b";S.active="b";
+        if(!S.sync)S.sync=newSyncCreds();   /* otherwise there is no invite to send back */
+        setupWarn="";S.setupStep="you";render();}
       else if(a==="joinNext"){
         const raw=$("#jTxt").value.trim();
         if(!raw){$("#jErr").innerHTML='<p class="tiny" style="color:var(--over);margin:8px 0 0">Paste the invite, or choose the file they sent.</p>';return;}
@@ -3491,6 +3511,7 @@ function bindMain(){
         const ws=S.weights[S.active].filter(w=>w.d!==todayStr());
         ws.push({d:todayStr(),kg:v});ws.sort((x,y)=>x.d<y.d?-1:1);
         S.weights[S.active]=ws; prof().weight=v; persist();render();
+        toastMsg("Weight saved \u00b7 "+v+" kg");
       }
       else if(a==="editprof"){editProfSheet(pid);}
       else if(a==="budget"){budgetSheet();}
@@ -3561,7 +3582,20 @@ function bindSheetBody(){
     if(q.value.trim()!==onlineState.q)onlineState={q:"",busy:false,err:"",results:null};$("#foodList").innerHTML=foodListHTML(q.value.trim());bindFoodRows();};bindFoodRows();
     if(!("ontouchstart" in window))q.focus();}
   if($("#pickAdd")){
-    const upd=()=>{$("#qVal").textContent=pickedQty+"×";$("#qKcal").textContent=r0(pickedFood.kcal*pickedQty)+" kcal";};
+    const g0=servingGrams(pickedFood.serving);
+    const upd=()=>{
+      $("#qVal").textContent=(Math.round(pickedQty*100)/100)+"\u00d7";
+      $("#qKcal").textContent=r0(pickedFood.kcal*pickedQty)+" kcal";
+      const gE=$("#qGram");
+      if(gE&&g0&&document.activeElement!==gE)gE.value=r0(g0.n*pickedQty);
+    };
+    const gE0=$("#qGram");
+    if(gE0&&g0)gE0.oninput=()=>{
+      const grams=parseFloat(gE0.value);
+      if(grams>0){pickedQty=+(grams/g0.n).toFixed(3);
+        $("#qVal").textContent=(Math.round(pickedQty*100)/100)+"\u00d7";
+        $("#qKcal").textContent=r0(pickedFood.kcal*pickedQty)+" kcal";}
+    };
     $("#qMinus").onclick=()=>{pickedQty=Math.max(0.25,+(pickedQty-0.25).toFixed(2));upd();};
     $("#qPlus").onclick=()=>{pickedQty=+(pickedQty+0.25).toFixed(2);upd();};
     $("#pickBack").onclick=()=>{pickedFood=null;refreshSheet();};
@@ -3630,10 +3664,20 @@ function bindFoodRows(){
 }
 function bindExSheet(){
   document.querySelectorAll("[data-xt]").forEach(b=>b.onclick=()=>{exTab=b.dataset.xt;pickedEx=null;refreshExSheet();});
+  bindExRows();
+  const eq=$("#exQ");
+  if(eq){
+    eq.oninput=()=>{$("#exList").innerHTML=exListHTML(eq.value.trim());bindExRows();};
+    if(!("ontouchstart" in window))eq.focus();
+  }
   if($("#mSave")){
     $("#mSave").onclick=()=>{
       const nm=$("#mName").value.trim(), mins=parseInt($("#mMins").value)||0, k=+$("#mK").value;
-      if(!(k>0)){alert("Enter how many calories it burned.");return;}
+      if(!(k>0)){
+        const w=$("#mWarn");
+        if(w)w.textContent="How many calories did it burn? If you don\u2019t know, pick the activity on the Activity tab instead.";
+        return;
+      }
       const day=S.ex[S.active][S.date]||(S.ex[S.active][S.date]=[]);
       day.push({id:uid(),name:nm||"Exercise",met:null,mins:mins,kcal:r0(k),ts:Date.now()});
       persist();closeSheet();render();
@@ -3661,6 +3705,7 @@ function isStandalone(){
 function isTouch(){return ("ontouchstart" in window)||navigator.maxTouchPoints>0;}
 function homeScreenTipHTML(){
   if(isStandalone()||S.hideTip||!isTouch())return "";
+  if(S.tab!=="today")return "";      /* one screen is enough to say it on */
   const ios=/iPad|iPhone|iPod/.test(navigator.userAgent)||
             (navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
   return '<div class="tipbar"><b>Run it like an app.</b> '+
