@@ -1495,6 +1495,7 @@ let sheetMeal="Lunch", sheetTab="search", pickedFood=null, pickedQty=1, quickPar
 function openAdd(meal){
   sheetMeal=meal||guessMeal(); sheetTab="search"; pickedFood=null; pickedQty=1; quickParsed=null; foodCat=null; onlineState={q:"",busy:false,err:"",results:null};
   stopScan(); scanState={on:false,err:"",code:"",busy:false,notFound:false,noData:""};
+  mineMode="list"; recipeItems=[]; recipePick=""; recipeName="";
   openSheet(addSheetHTML()); bindAddSheet();
 }
 function guessMeal(){const h=new Date().getHours();return h<10.5?"Breakfast":h<15?"Lunch":h<21?"Dinner":"Snacks";}
@@ -1519,7 +1520,7 @@ function addSheetHTML(){
       '<button data-st="search" class="'+(sheetTab==="search"?"on":"")+'">Search</button>'+
       '<button data-st="quick" class="'+(sheetTab==="quick"?"on":"")+'">Describe</button>'+
       '<button data-st="fast" class="'+(sheetTab==="fast"?"on":"")+'">Quick</button>'+
-      '<button data-st="custom" class="'+(sheetTab==="custom"?"on":"")+'">Custom</button>'+
+      '<button data-st="custom" class="'+(sheetTab==="custom"?"on":"")+'">Mine</button>'+
       '<button data-st="scan" class="'+(sheetTab==="scan"?"on":"")+'">Scan</button>'+
     '</div><div id="sheetBody">'+sheetBodyHTML()+'</div>';
 }
@@ -1542,10 +1543,120 @@ function sheetBodyHTML(){
       '<div><div class="flabel">Label (optional)</div><input id="fN" placeholder="Quick add"></div></div>'+
       '<button class="btn primary" style="width:100%" id="fSave">Add to '+sheetMeal+'</button>';
   }
-  return '<div class="frow"><div><div class="flabel">Name</div><input id="cName" placeholder="e.g. Mum&#39;s curry"></div></div>'+
-    '<div class="frow"><div><div class="flabel">Serving</div><input id="cServ" placeholder="1 bowl"></div><div><div class="flabel">Calories</div><input id="cK" type="number" inputmode="numeric"></div></div>'+
-    '<div class="frow"><div><div class="flabel">Protein g</div><input id="cP" type="number" inputmode="decimal"></div><div><div class="flabel">Carbs g</div><input id="cC" type="number" inputmode="decimal"></div><div><div class="flabel">Fat g</div><input id="cF" type="number" inputmode="decimal"></div></div>'+
-    '<button class="btn primary" style="width:100%" id="cSave">Save &amp; add to '+sheetMeal+'</button>';
+  return mineHTML();
+}
+/* ---- Mine: the foods and recipes you added yourself ----
+   Everything saved here stays for good and shows up in Search too. */
+let mineMode="list";          /* list | food | recipe */
+let recipeItems=[], recipePick="", recipeName="";
+function mineHTML(){
+  if(mineMode==="food")   return mineFoodFormHTML();
+  if(mineMode==="recipe") return mineRecipeFormHTML();
+  const mine=S.custom||[], recipes=S.savedMeals||[];
+  let h='<div class="row" style="margin:2px 0 4px">'+
+    '<button class="btn small grow" id="mNewFood">+ New food</button>'+
+    '<button class="btn small grow" id="mNewRecipe">+ New recipe</button></div>';
+  if(recipes.length){
+    h+='<div class="label" style="margin:14px 0 4px">My recipes</div>';
+    for(const m of recipes){
+      const tot=m.items.reduce((a,i)=>a+i.kcal*i.qty,0);
+      h+='<div class="foodrow"><button class="fmain" data-savedmeal="'+m.id+'">'+
+        '<span class="fic">\ud83c\udf72</span><span class="grow"><span class="fname">'+esc(m.name)+'</span><br>'+
+        '<span class="fsub">'+m.items.length+' things</span></span><b class="num">'+r0(tot)+'</b></button>'+
+        '<button class="star" data-delrecipe="'+m.id+'" aria-label="Delete recipe">\u2715</button></div>';
+    }
+  }
+  if(mine.length){
+    h+='<div class="label" style="margin:14px 0 4px">My foods</div>';
+    for(const f of mine) h+=foodRowHTML(f);
+  }
+  if(!recipes.length&&!mine.length)
+    h+='<p class="tiny muted" style="text-align:center;padding:18px 8px">Nothing of your own yet.<br>'+
+       'Add a food you eat often, or a recipe made of several things. Both are saved for good.</p>';
+  return h;
+}
+function mineFoodFormHTML(){
+  return '<button class="linkbtn" id="mBack">\u2039 Back</button>'+
+    '<div class="frow"><div><div class="flabel">Name</div><input id="cName" placeholder="e.g. Mum\u2019s curry"></div></div>'+
+    '<div class="frow"><div><div class="flabel">Serving</div><input id="cServ" placeholder="1 bowl"></div>'+
+      '<div><div class="flabel">Calories</div><input id="cK" type="number" inputmode="numeric"></div></div>'+
+    '<div class="frow"><div><div class="flabel">Protein g</div><input id="cP" type="number" inputmode="decimal"></div>'+
+      '<div><div class="flabel">Carbs g</div><input id="cC" type="number" inputmode="decimal"></div>'+
+      '<div><div class="flabel">Fat g</div><input id="cF" type="number" inputmode="decimal"></div></div>'+
+    '<button class="btn primary" style="width:100%" id="cSave">Save &amp; add to '+sheetMeal+'</button>'+
+    '<p class="tiny muted" style="margin:8px 2px 0">Saved to My foods, and findable in Search from now on.</p>';
+}
+function mineRecipeFormHTML(){
+  const tot=recipeItems.reduce((a,i)=>a+i.kcal*i.qty,0);
+  let h='<button class="linkbtn" id="mBack">\u2039 Back</button>'+
+    '<div class="frow"><div><div class="flabel">Recipe name</div>'+
+      '<input id="rName" placeholder="e.g. My usual breakfast" value="'+esc(recipeName)+'"></div></div>'+
+    '<div class="label" style="margin:10px 0 4px">What\u2019s in it</div>';
+  if(!recipeItems.length)
+    h+='<p class="tiny muted" style="margin:0 0 8px">Nothing added yet. Search below and tap to add.</p>';
+  for(let i=0;i<recipeItems.length;i++){
+    const it=recipeItems[i];
+    h+='<div class="foodrow"><span class="fmain" style="cursor:default"><span class="fic">'+(it.ic||"\ud83c\udf7d\ufe0f")+'</span>'+
+      '<span class="grow"><span class="fname">'+(it.qty!==1?'<span class="num">'+it.qty+'\u00d7</span> ':"")+esc(it.name)+'</span><br>'+
+      '<span class="fsub num">'+esc(it.serving||"serving")+'</span></span>'+
+      '<b class="num">'+r0(it.kcal*it.qty)+'</b></span>'+
+      '<button class="star" data-rmrecipe="'+i+'" aria-label="Remove">\u2715</button></div>';
+  }
+  h+='<div class="row" style="justify-content:space-between;margin:10px 0"><b class="num">Total '+r0(tot)+' kcal</b>'+
+     '<button class="btn small primary" id="rSave">Save recipe</button></div>'+
+     '<input id="rQ" placeholder="Add something\u2026" autocomplete="off">'+
+     '<div id="rList">'+recipeSearchHTML(recipePick)+'</div>';
+  return h;
+}
+function recipeSearchHTML(q){
+  if(!q) return '<p class="tiny muted" style="margin:8px 2px">Type to find a food.</p>';
+  const res=searchFoods(q,12);
+  if(!res.length) return '<p class="tiny muted" style="margin:8px 2px">Nothing matched.</p>';
+  return res.map(f=>'<div class="foodrow"><button class="fmain" data-radd="'+esc(f.name)+'">'+
+    '<span class="fic">'+(f.ic||"\ud83c\udf7d\ufe0f")+'</span><span class="grow"><span class="fname">'+esc(f.name)+'</span><br>'+
+    '<span class="fsub num">'+esc(f.serving)+'</span></span><b class="num">'+f.kcal+'</b></button></div>').join("");
+}
+function bindMine(){
+  if(sheetTab==="custom"&&mineMode==="list")bindFoodRows();
+  if($("#mNewFood"))$("#mNewFood").onclick=()=>{mineMode="food";refreshSheet();};
+  if($("#mNewRecipe"))$("#mNewRecipe").onclick=()=>{mineMode="recipe";recipeItems=[];recipePick="";recipeName="";refreshSheet();};
+  if($("#mBack"))$("#mBack").onclick=()=>{mineMode="list";refreshSheet();};
+  document.querySelectorAll("[data-delrecipe]").forEach(b=>b.onclick=()=>{
+    const m=S.savedMeals.find(x=>x.id===b.dataset.delrecipe);
+    if(!m||!confirm("Delete \u201c"+m.name+"\u201d?"))return;
+    S.savedMeals=S.savedMeals.filter(x=>x.id!==b.dataset.delrecipe);
+    persist();refreshSheet();
+  });
+  document.querySelectorAll("[data-rmrecipe]").forEach(b=>b.onclick=()=>{
+    const nEl=$("#rName"); if(nEl)recipeName=nEl.value;
+    recipeItems.splice(+b.dataset.rmrecipe,1);refreshSheet();
+  });
+  const rn=$("#rName");
+  if(rn)rn.oninput=()=>{recipeName=rn.value;};
+  const rq=$("#rQ");
+  if(rq){
+    rq.oninput=()=>{recipePick=rq.value.trim();$("#rList").innerHTML=recipeSearchHTML(recipePick);bindMine();};
+    document.querySelectorAll("[data-radd]").forEach(b=>b.onclick=()=>{
+      const nEl=$("#rName"); if(nEl)recipeName=nEl.value;   /* keep what they typed */
+      const f=allFoods().find(x=>x.name===b.dataset.radd);
+      if(!f)return;
+      const same=recipeItems.find(x=>x.name===f.name);
+      if(same)same.qty=+(same.qty+1).toFixed(2);
+      else recipeItems.push({name:f.name,serving:f.serving,kcal:f.kcal,p:f.p,c:f.c,f:f.f,ic:f.ic,qty:1});
+      refreshSheet();
+      const q2=$("#rQ"); if(q2){q2.value=recipePick;}
+    });
+  }
+  if($("#rSave"))$("#rSave").onclick=()=>{
+    const nm=(($("#rName")||{}).value||recipeName||"").trim();
+    if(!nm){alert("Give the recipe a name.");return;}
+    if(!recipeItems.length){alert("Add at least one thing to it.");return;}
+    S.savedMeals.push({id:uid(),name:nm,items:recipeItems.map(i=>({name:i.name,serving:i.serving,
+      kcal:i.kcal,p:i.p,c:i.c,f:i.f,qty:i.qty,ic:i.ic}))});
+    persist();
+    mineMode="list";recipeItems=[];recipePick="";recipeName="";
+    refreshSheet();
+  };
 }
 let foodCat=null;
 function foodListHTML(q){
@@ -2190,8 +2301,45 @@ function parseQuick(text){
       const sm=String(food.serving).match(/^(\d+(?:\.\d+)?)/);
       if(sm&&parseFloat(sm[1])===qty)qty=1;
     }
-    return {raw:part,qty:qty,food:food};
-  });
+    return {raw:part,qty:qty,food:food,n:0,looking:false};
+  }).map((it,i)=>{it.n=i;return it;});
+}
+/* One item the built-in list didn't know. Ask Open Food Facts about just that item
+   and drop the best answer straight into the line. */
+async function quickLookOne(i){
+  const it=quickParsed[i]; if(!it||it.food)return;
+  it.looking=true; $("#quickOut").innerHTML=quickOutHTML(); bindQuickOut();
+  let hit=null;
+  try{
+    const url=OFF_URL+"?search_terms="+encodeURIComponent(it.raw)+
+      "&search_simple=1&action=process&json=1&page_size=10"+
+      "&fields=product_name,brands,nutriments,serving_size";
+    const r=await offFetch(url,4);
+    const j=await r.json();
+    for(const prod of (j.products||[])){
+      let nm=offText(prod.product_name); if(!nm)continue;
+      const per=offServing(prod.nutriments||{},offText(prod.serving_size));
+      if(!per)continue;
+      const brand=offText((prod.brands||"").split(",")[0]);
+      if(brand&&nm.toLowerCase().indexOf(brand.toLowerCase())<0)nm=(brand+" "+nm).trim();
+      if(nm.length>52)nm=nm.slice(0,51).trim()+"\u2026";
+      hit={name:nm,serving:per.serving,kcal:Math.round(per.kcal),p:Math.round(per.p),
+           c:Math.round(per.c),f:Math.round(per.f),ic:"\ud83d\udce6",online:true};
+      break;
+    }
+  }catch(e){}
+  it.looking=false;
+  if(hit)it.food=hit;
+  $("#quickOut").innerHTML=quickOutHTML(); bindQuickOut();
+  if(!hit){const el=$("#ql"+i); if(el)el.textContent="nothing online either \u2014 use Quick add";}
+}
+function bindQuickOut(){
+  document.querySelectorAll("[data-qlook]").forEach(b=>b.onclick=()=>quickLookOne(+b.dataset.qlook));
+  const ba=$("#quickAdd");
+  if(ba)ba.onclick=()=>{
+    for(const it of quickParsed){if(it.food)addEntry(it.food,it.qty,sheetMeal);}
+    closeSheet();render();
+  };
 }
 function quickOutHTML(){
   let total=0,html='<div style="margin-top:12px">';
@@ -2199,7 +2347,7 @@ function quickOutHTML(){
     if(it.food){total+=it.food.kcal*it.qty;
       html+='<div class="foodrow" style="cursor:default"><span class="grow"><span class="fname">'+(it.qty!==1?'<span class="num">'+it.qty+'×</span> ':"")+esc(it.food.name)+'</span><br><span class="fsub">matched from “'+esc(it.raw)+'”</span></span><b class="num">'+r0(it.food.kcal*it.qty)+'</b></div>';
     }else{
-      html+='<div class="foodrow" style="cursor:default"><span class="grow"><span class="fname" style="color:var(--over)">“'+esc(it.raw)+'” — no match</span><br><span class="fsub">add it via Quick add or Custom</span></span></div>';
+      html+='<div class="foodrow" style="cursor:default"><span class="grow">'+'<span class="fname">\u201c'+esc(it.raw)+'\u201d</span><br>'+'<span class="fsub" id="ql'+it.n+'">'+(it.looking?'looking it up\u2026':'not in the list \u2014 tap to search online')+'</span></span>'+(it.looking?"":'<button class="btn small" data-qlook="'+it.n+'">Search</button>')+'</div>';
     }
   }
   html+='<div class="row" style="margin-top:12px;justify-content:space-between"><b class="num">Total ≈ '+r0(total)+' kcal</b><button class="btn primary" id="quickAdd">Add all</button></div></div>';
@@ -2743,16 +2891,17 @@ function settingsHTML(){
     }
     html+='</section>';
   }
-  html+='<section class="card"><div class="label" style="margin-bottom:8px">Saving</div>'+
-   '<div class="row" style="justify-content:space-between"><span class="tiny">Kept in <b>'+Store.where()+'</b></span>'+
-   '<span class="pill '+(Store.saving()?"good":"over")+'">'+(Store.saving()?"Saving on":"Not saving")+'</span></div>'+
-   (Store.saving()?"":'<p class="tiny muted" style="margin:10px 0 0">Keep a backup file and restore it when you come back, or open the app file directly where saving works normally.</p>')+
-   '<div id="photoUse" class="tiny muted" style="margin:10px 0 0">Checking photos…</div>'+
-   '</section>';
-  html+='<section class="card"><div class="label" style="margin-bottom:8px">Backup</div>'+
-   '<p class="tiny muted" style="margin:0 0 10px">A copy of everything on this phone \u2014 useful before changing phone, or to restore if something goes wrong.</p>'+
-   '<div class="row"><button class="btn grow" data-act="export">Save a backup</button><button class="btn grow" data-act="import">Restore</button></div>'+
-   '<div id="exportOut"></div></section>';
+  /* Saving is normally invisible \u2014 it only earns space when it is NOT working,
+     because then the day's log really can vanish. */
+  if(!Store.saving())
+    html+='<section class="card"><div class="row" style="justify-content:space-between">'+
+     '<span class="tiny"><b>This phone isn\u2019t saving</b></span><span class="pill over">Careful</span></div>'+
+     '<p class="tiny muted" style="margin:10px 0 0">Your day stays while the app is open. Close it and it goes. '+
+     'Opening the app from its normal link fixes this.</p>'+
+     '<div class="row" style="margin-top:10px"><button class="btn small grow" data-act="export">Save a copy</button>'+
+     '<button class="btn small grow" data-act="import">Open a copy</button></div>'+
+     '<div id="exportOut"></div></section>';
+  html+='<div id="photoUse" class="tiny muted" style="margin:2px 2px 14px"></div>';
   html+='<section class="card"><div class="label" style="margin-bottom:8px">About</div>'+
    '<p class="tiny muted" style="margin:0">Food and exercise values are typical estimates — treat them as a guide, not gospel. Budgets use the Mifflin-St Jeor formula; exercise is estimated from your weight and activity intensity. If you log workouts here, pick a lower activity level so the same effort is not counted twice. Not medical advice.</p>'+
    '<button class="btn danger small" style="margin-top:12px" data-act="reset">Erase all data</button></section>';
@@ -3259,6 +3408,7 @@ function refreshSheet(){
   sb.innerHTML=sheetBodyHTML();bindSheetBody();
 }
 function bindSheetBody(){
+  bindMine();
   if($("#scanStart"))$("#scanStart").onclick=()=>startScan();
   if($("#scanStop"))$("#scanStop").onclick=()=>{stopScan();refreshSheet();};
   if($("#bcRetry"))$("#bcRetry").onclick=()=>lookupBarcode(scanState.code);
@@ -3288,11 +3438,10 @@ function bindSheetBody(){
   if($("#quickGo")){
     $("#quickGo").onclick=()=>{
       const t=$("#quickQ").value.trim();if(!t)return;
-      quickParsed=parseQuick(t);$("#quickOut").innerHTML=quickOutHTML();
-      const ba=$("#quickAdd");if(ba)ba.onclick=()=>{
-        for(const it of quickParsed){if(it.food)addEntry(it.food,it.qty,sheetMeal);}
-        closeSheet();render();
-      };
+      quickParsed=parseQuick(t);
+      $("#quickOut").innerHTML=quickOutHTML();
+      bindQuickOut();
+      quickParsed.forEach((it,i)=>{ if(!it.food) quickLookOne(i); });
     };
   }
   if($("#fSave")){
@@ -3312,6 +3461,7 @@ function bindSheetBody(){
       if(!name||!(k>0)){alert("Give it a name and calories.");return;}
       const f={name:name,serving:$("#cServ").value.trim()||"1 serving",kcal:r0(k),p:+$("#cP").value||0,c:+$("#cC").value||0,f:+$("#cF").value||0,kw:"",ic:"🍽️"};
       if(!S.custom.some(x=>x.name===f.name))S.custom.unshift(f);
+      persist();
       addEntry(f,1,sheetMeal);closeSheet();render();
     };
   }
